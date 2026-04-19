@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 export default function Dashboard() {
   const [data, setData] = useState([])
+  const [chartData, setChartData] = useState([])
   const [search, setSearch] = useState('')
   const [location, setLocation] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // 📦 fetch inventory
   const fetchData = async () => {
     setLoading(true)
 
@@ -24,14 +27,32 @@ export default function Dashboard() {
     setLoading(false)
   }
 
+  // 📊 fetch chart
+  const fetchChart = async () => {
+    const res = await fetch('/api/transactions/summary')
+    const json = await res.json()
+
+    const formatted = (json.data || []).map(item => ({
+      type: item.type,
+      quantity: item._sum.quantity || 0
+    }))
+
+    setChartData(formatted)
+  }
+
   // โหลดครั้งแรก
   useEffect(() => {
     fetchData()
+    fetchChart()
   }, [])
 
   // auto refresh
   useEffect(() => {
-    const interval = setInterval(fetchData, 5000)
+    const interval = setInterval(() => {
+      fetchData()
+      fetchChart()
+    }, 5000)
+
     return () => clearInterval(interval)
   }, [search, location])
 
@@ -58,6 +79,20 @@ export default function Dashboard() {
         <button onClick={fetchData}>Search</button>
       </div>
 
+      {/* 📊 Chart */}
+      <h2>📊 Transaction Summary</h2>
+      {chartData.length > 0 ? (
+        <BarChart width={500} height={300} data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="type" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="quantity" fill="#8884d8" />
+        </BarChart>
+      ) : (
+        <p>No chart data</p>
+      )}
+
       {/* ⏳ Loading */}
       {loading && <p>Loading...</p>}
 
@@ -66,7 +101,7 @@ export default function Dashboard() {
 
       {/* 📊 Table */}
       {!loading && data.length > 0 && (
-        <table border="1" cellPadding="10">
+        <table border="1" cellPadding="10" style={{ marginTop: 20 }}>
           <thead>
             <tr>
               <th>Product</th>
@@ -79,7 +114,7 @@ export default function Dashboard() {
               <tr key={item.id}>
                 <td>{item.product.name}</td>
                 <td>{item.location.code}</td>
-                <td style={{ color: item.quantity < 5 ? 'red' : '' }}>
+                <td style={{ color: item.quantity < 5 ? 'red' : 'black' }}>
                   {item.quantity}
                 </td>
               </tr>
