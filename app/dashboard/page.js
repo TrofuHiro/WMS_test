@@ -114,7 +114,7 @@ export default function Dashboard() {
               <tr key={item.id}>
                 <td>{item.product.name}</td>
                 <td>{item.location.code}</td>
-                <td style={{ color: item.quantity < 5 ? 'red' : 'black' }}>
+                <td style={{ color: item.quantity < 5 ? 'red' : '' }}>
                   {item.quantity}
                 </td>
               </tr>
