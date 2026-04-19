@@ -28,6 +28,8 @@ model Inventory {
 
   product     Product   @relation(fields: [productId], references: [id])
   location    WarehouseLocation @relation(fields: [locationId], references: [id])
+
+  @@unique([productId, locationId])
 }
 
 model Transaction {
