@@ -1,39 +1,109 @@
-import OpenAI from 'openai'
-
-const openai = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY
-})
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req) {
-  const { message } = await req.json()
+  try {
+    const { message } = await req.json()
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4.1-mini',
-    messages: [
-      {
-        role: 'system',
-        content: `
-        Convert user message into JSON:
-        { "name": "", "quantity": number, "locationCode": "" }
-        `
-      },
-      {
-        role: 'user',
-        content: message
-      }
-    ]
-  })
+    // 🧠 Improved Regex (รองรับชื่อยาว + flexible)
+    const regex = /(?:รับสินค้า|เพิ่มสินค้า)?\s*(.*?)\s*(?:จำนวน)?\s*(\d+)\s*(?:ที่)?\s*([A-Za-z0-9]+)$/i
 
-  const text = completion.choices[0].message.content
+    const match = message.match(regex)
 
-  const parsed = JSON.parse(text)
+    if (!match) {
+      return Response.json(
+        { error: '❌ ไม่เข้าใจข้อความ' },
+        { status: 400 }
+      )
+    }
 
-  // ยิงต่อไป inbound API
-  const res = await fetch('http://localhost:3000/api/inbound', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(parsed)
-  })
+    const name = match[1].trim()
+    const quantity = Number(match[2])
+    const locationCode = match[3].toUpperCase()
 
-  return Response.json(await res.json())
+    // ✅ validation
+    if (!name || !quantity || !locationCode) {
+      return Response.json(
+        { error: 'Missing fields' },
+        { status: 400 }
+      )
+    }
+
+    if (quantity <= 0) {
+      return Response.json(
+        { error: 'Quantity must be > 0' },
+        { status: 400 }
+      )
+    }
+
+    console.log('🤖 Parsed:', { name, quantity, locationCode })
+
+    // =========================
+    // 🧩 DB LOGIC (Prisma)
+    // =========================
+
+    // 1. หา/สร้าง product
+    let product = await prisma.product.findFirst({
+      where: { name }
+    })
+
+    if (!product) {
+      product = await prisma.product.create({
+        data: { name }
+      })
+    }
+
+    // 2. หา/สร้าง location
+    let location = await prisma.warehouseLocation.findUnique({
+      where: { code: locationCode }
+    })
+
+    if (!location) {
+      location = await prisma.warehouseLocation.create({
+        data: { code: locationCode }
+      })
+    }
+
+    // 3. inventory + transaction
+    const [inventory, transaction] = await prisma.$transaction([
+      prisma.inventory.upsert({
+        where: {
+          productId_locationId: {
+            productId: product.id,
+            locationId: location.id
+          }
+        },
+        update: {
+          quantity: { increment: quantity }
+        },
+        create: {
+          productId: product.id,
+          locationId: location.id,
+          quantity: quantity
+        }
+      }),
+      prisma.transaction.create({
+        data: {
+          type: 'IN',
+          quantity: quantity,
+          productId: product.id
+        }
+      })
+    ])
+
+    return Response.json({
+      message: '✅ AI Inbound success',
+      parsed: { name, quantity, locationCode },
+      product,
+      location,
+      inventory,
+      transaction
+    })
+
+  } catch (err) {
+    console.error(err)
+    return Response.json(
+      { error: 'AI inbound error' },
+      { status: 500 }
+    )
+  }
 }

@@ -9,27 +9,62 @@ export default function Dashboard() {
   const [search, setSearch] = useState('')
   const [location, setLocation] = useState('')
   const [loading, setLoading] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
-  // 📦 fetch inventory
+  // 🤖 AI
+  const [message, setMessage] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+
+  // 🔍 autocomplete
+  const [suggestions, setSuggestions] = useState([])
+  const [selectedProduct, setSelectedProduct] = useState(null)
+
+  // 📤 outbound
+  const [outQty, setOutQty] = useState(1)
+
+  // 🚨 alert
+  const [alerts, setAlerts] = useState([])
+
+  // =========================
+  // 📦 FETCH INVENTORY (สำคัญ)
+  // =========================
   const fetchData = async () => {
     setLoading(true)
 
-    const params = new URLSearchParams()
-    if (search) params.append('name', search)
-    if (location) params.append('locationCode', location)
+    try {
+      const params = new URLSearchParams()
+      if (search) params.append('name', search)
+      if (location) params.append('locationCode', location)
 
-    const url = `/api/inventory?${params.toString()}`
+      const res = await fetch(`/api/inventory?${params.toString()}`)
+      if (!res.ok) return
 
-    const res = await fetch(url)
-    const json = await res.json()
+      const json = await res.json()
 
-    setData(json.data || [])
+      // ✅ ใช้เฉพาะข้อมูลที่ search มา
+      setData(json.data || [])
+    } catch (err) {
+      console.error(err)
+    }
+
     setLoading(false)
   }
 
-  // 📊 fetch chart
+  // =========================
+  // 📊 FETCH CHART
+  // =========================
+  
   const fetchChart = async () => {
-    const res = await fetch('/api/transactions/summary')
+  try {
+    const params = new URLSearchParams()
+
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
+
+    const res = await fetch(`/api/transactions/summary?${params.toString()}`)
+    if (!res.ok) return
+
     const json = await res.json()
 
     const formatted = (json.data || []).map(item => ({
@@ -38,73 +73,277 @@ export default function Dashboard() {
     }))
 
     setChartData(formatted)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+  // =========================
+  // 🤖 AI
+  // =========================
+  const handleAI = async () => {
+    if (!message.trim()) return
+
+    setAiLoading(true)
+
+    try {
+      const res = await fetch('/api/ai-inbound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        console.error(text)
+        alert('❌ AI error')
+        return
+      }
+
+      await res.json()
+
+      alert('✅ เพิ่มสินค้าเรียบร้อย')
+
+      setMessage('')
+      fetchData()
+      fetchChart()
+
+    } catch (err) {
+      console.error(err)
+      alert('❌ Network error')
+    }
+
+    setAiLoading(false)
   }
 
-  // โหลดครั้งแรก
+  // =========================
+  // 🔍 AUTOCOMPLETE
+  // =========================
+  useEffect(() => {
+    const fetchSuggest = async () => {
+      if (!search) {
+        setSuggestions([])
+        return
+      }
+
+      try {
+        const res = await fetch(`/api/inventory?name=${search}`)
+        const json = await res.json()
+        setSuggestions(json.data || [])
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    fetchSuggest()
+  }, [search])
+
+  const handleSelectProduct = (item) => {
+    setSelectedProduct(item)
+    setSearch(item.product.name)
+    setLocation(item.location.code)
+    setSuggestions([])
+
+    // 🔥 auto search ทันที
+    setTimeout(fetchData, 100)
+  }
+
+  // =========================
+  // 📤 OUTBOUND
+  // =========================
+  const handleOutbound = async () => {
+    if (!selectedProduct) return alert('เลือกสินค้าก่อน')
+
+    if (outQty <= 0) return alert('จำนวนต้องมากกว่า 0')
+
+    if (outQty > selectedProduct.quantity) {
+      return alert('❌ จำนวนสินค้าไม่พอ')
+    }
+
+    try {
+      const res = await fetch('/api/outbound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: selectedProduct.product.id,
+          locationId: selectedProduct.location.id,
+          quantity: Number(outQty)
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || '❌ error')
+        return
+      }
+
+      alert('✅ เบิกสินค้าเรียบร้อย')
+
+      setSelectedProduct(null)
+      fetchData()
+      fetchChart()
+    } catch (err) {
+      console.error(err)
+      alert('❌ error')
+    }
+  }
+
+  // =========================
+  // INIT
+  // =========================
   useEffect(() => {
     fetchData()
     fetchChart()
   }, [])
 
+  // =========================
+  // 🤖 AUTO MONITOR
+  // =========================
   useEffect(() => {
-  const interval = setInterval(async () => {
-    const res = await fetch('/api/inventory')
-    const data = await res.json()
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/inventory')
+        const json = await res.json()
 
-    const lowStock = data.data.filter(i => i.quantity < 5)
+        const lowStock = json.data.filter(i => i.quantity < 5)
+        setAlerts(lowStock)
+      } catch (err) {
+        console.error(err)
+      }
+    }, 10000)
 
-    if (lowStock.length > 0) {
-      console.log('⚠️ Low stock alert:', lowStock)
-    }
-  }, 10000)
-
-  return () => clearInterval(interval)
-}, [])
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div style={{ padding: 20 }}>
       <h1>📦 WMS Dashboard</h1>
 
-      {/* 🔍 Filter */}
+      {/* 🚨 ALERT */}
+      {alerts.length > 0 && (
+        <div style={{ background: '#ffe0e0', padding: 10, marginBottom: 20 }}>
+          ⚠️ Low Stock:
+          {alerts.map(i => (
+            <div key={i.id}>
+              {i.product.name} ({i.location.code}) เหลือ {i.quantity}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 🤖 AI */}
       <div style={{ marginBottom: 20 }}>
-        <input
-          placeholder="Search product..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ marginRight: 10 }}
-        />
+        <h2>🤖 AI Input</h2>
 
         <input
-          placeholder="Location (A1)"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="รับสินค้า iPhone 15 จำนวน 10 ที่ A1"
+          style={{ width: 400, marginRight: 10 }}
+        />
+
+        <button onClick={handleAI} disabled={aiLoading}>
+          {aiLoading ? 'Processing...' : 'Send'}
+        </button>
+      </div>
+
+      {/* 🔍 SEARCH */}
+      <div style={{ marginBottom: 20, position: 'relative' }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search product..."
+        />
+
+        {suggestions.length > 0 && (
+          <div style={{
+            position: 'absolute',
+            background: '#fff',
+            border: '1px solid #ccc',
+            width: 300,
+            zIndex: 10
+          }}>
+            {suggestions.map(item => (
+              <div
+                key={item.id}
+                onClick={() => handleSelectProduct(item)}
+                style={{ padding: 5, cursor: 'pointer' }}
+              >
+                {item.product.name} ({item.location.code})
+              </div>
+            ))}
+          </div>
+        )}
+
+        <input
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          style={{ marginRight: 10 }}
+          placeholder="Location"
+          style={{ marginLeft: 10 }}
         />
 
         <button onClick={fetchData}>Search</button>
       </div>
 
-      {/* 📊 Chart */}
+      {/* 📤 OUTBOUND */}
+      <div style={{ marginBottom: 20 }}>
+        <h3>📤 Outbound</h3>
+
+        {selectedProduct && (
+          <p>
+            Selected: {selectedProduct.product.name} ({selectedProduct.location.code})
+          </p>
+        )}
+
+        <input
+          type="number"
+          value={outQty}
+          onChange={(e) => setOutQty(e.target.value)}
+        />
+
+        <button onClick={handleOutbound}>เอาสินค้าออก</button>
+      </div>
+
+      {/* 📊 CHART */}
       <h2>📊 Transaction Summary</h2>
+      <div style={{ marginBottom: 20 }}>
+  <h3>📅 Filter by Date</h3>
+
+  <input
+    type="date"
+    value={startDate}
+    onChange={(e) => setStartDate(e.target.value)}
+  />
+
+  <input
+    type="date"
+    value={endDate}
+    onChange={(e) => setEndDate(e.target.value)}
+    style={{ marginLeft: 10 }}
+  />
+
+  <button onClick={fetchChart} style={{ marginLeft: 10 }}>
+    Apply
+  </button>
+</div>
       {chartData.length > 0 ? (
         <BarChart width={500} height={300} data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="type" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="quantity" fill="#8884d8" />
-        </BarChart>
+  <CartesianGrid strokeDasharray="3 3" />
+  <XAxis dataKey="type" />
+  <YAxis />
+  <Tooltip />
+  <Bar dataKey="quantity" />
+</BarChart>
       ) : (
         <p>No chart data</p>
       )}
 
-      {/* ⏳ Loading */}
+      {/* 📦 TABLE */}
       {loading && <p>Loading...</p>}
 
-      {/* ❌ No Data */}
       {!loading && data.length === 0 && <p>No data found</p>}
 
-      {/* 📊 Table */}
       {!loading && data.length > 0 && (
         <table border="1" cellPadding="10" style={{ marginTop: 20 }}>
           <thead>
@@ -115,7 +354,7 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {data.map((item) => (
+            {data.map(item => (
               <tr key={item.id}>
                 <td>{item.product.name}</td>
                 <td>{item.location.code}</td>
