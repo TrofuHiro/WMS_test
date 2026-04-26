@@ -46,15 +46,20 @@ export default function Dashboard() {
     fetchChart()
   }, [])
 
-  // auto refresh
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchData()
-      fetchChart()
-    }, 5000)
+  const interval = setInterval(async () => {
+    const res = await fetch('/api/inventory')
+    const data = await res.json()
 
-    return () => clearInterval(interval)
-  }, [search, location])
+    const lowStock = data.data.filter(i => i.quantity < 5)
+
+    if (lowStock.length > 0) {
+      console.log('⚠️ Low stock alert:', lowStock)
+    }
+  }, 10000)
+
+  return () => clearInterval(interval)
+}, [])
 
   return (
     <div style={{ padding: 20 }}>
