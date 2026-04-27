@@ -1,30 +1,24 @@
 import { prisma } from '@/lib/prisma'
 
-function parseThaiDate(dateStr) {
-  if (!dateStr) return null
-
-  const [day, month, year] = dateStr.split('/')
-  const christianYear = Number(year) - 543
-
-  return new Date(christianYear, Number(month) - 1, Number(day))
-}
-
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url)
 
-    const startDateRaw = searchParams.get('startDate')
-    const endDateRaw = searchParams.get('endDate')
-
-    const startDate = parseThaiDate(startDateRaw)
-    const endDate = parseThaiDate(endDateRaw)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     let where = {}
 
     if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+
+      // 🔥 ทำให้ end ครอบทั้งวัน (23:59:59.999)
+      end.setHours(23, 59, 59, 999)
+
       where.createdAt = {
-        gte: startDate,
-        lte: endDate
+        gte: start,
+        lte: end
       }
     }
 
@@ -37,7 +31,6 @@ export async function GET(req) {
     })
 
     return Response.json({ data: transactions })
-
   } catch (error) {
     console.error(error)
 
