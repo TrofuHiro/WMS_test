@@ -222,7 +222,7 @@ export default function Dashboard() {
 
       {/* 🚨 ALERT */}
       {alerts.length > 0 && (
-        <div style={{ background: '#ffe0e0', padding: 10, marginBottom: 20 }}>
+        <div style={{ background: '#ffe0e0', padding: 10, marginBottom: 20, color: '#000'}}>
           ⚠️ Low Stock:
           {alerts.map(i => (
             <div key={i.id}>
@@ -333,7 +333,7 @@ export default function Dashboard() {
   <XAxis dataKey="type" />
   <YAxis />
   <Tooltip />
-  <Bar dataKey="quantity" />
+  <Bar dataKey="quantity" fill="#3b82f6"/>
 </BarChart>
       ) : (
         <p>No chart data</p>
