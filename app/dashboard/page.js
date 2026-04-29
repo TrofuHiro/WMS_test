@@ -6,80 +6,60 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 export default function Dashboard() {
   const [data, setData] = useState([])
   const [chartData, setChartData] = useState([])
+
   const [search, setSearch] = useState('')
   const [location, setLocation] = useState('')
   const [loading, setLoading] = useState(false)
+
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  // 🤖 AI
-  const [message, setMessage] = useState('')
-  const [aiLoading, setAiLoading] = useState(false)
-
-  // 🔍 autocomplete
   const [suggestions, setSuggestions] = useState([])
   const [selectedProduct, setSelectedProduct] = useState(null)
 
-  // 📤 outbound
-  const [outQty, setOutQty] = useState(1)
-
-  // 🚨 alert
   const [alerts, setAlerts] = useState([])
 
+  const [message, setMessage] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+
   // =========================
-  // 📦 FETCH INVENTORY (สำคัญ)
+  // 📦 FETCH INVENTORY
   // =========================
   const fetchData = async () => {
     setLoading(true)
 
-    try {
-      const params = new URLSearchParams()
-      if (search) params.append('name', search)
-      if (location) params.append('locationCode', location)
+    const params = new URLSearchParams()
+    if (search) params.append('name', search)
+    if (location) params.append('locationCode', location)
 
-      const res = await fetch(`/api/inventory?${params.toString()}`)
-      if (!res.ok) return
+    const res = await fetch(`/api/inventory?${params.toString()}`)
+    const json = await res.json()
 
-      const json = await res.json()
-
-      // ✅ ใช้เฉพาะข้อมูลที่ search มา
-      setData(json.data || [])
-    } catch (err) {
-      console.error(err)
-    }
-
+    setData(json.data || [])
     setLoading(false)
   }
 
   // =========================
   // 📊 FETCH CHART
   // =========================
-  
   const fetchChart = async () => {
-  try {
     const params = new URLSearchParams()
-
     if (startDate) params.append('startDate', startDate)
     if (endDate) params.append('endDate', endDate)
 
     const res = await fetch(`/api/transactions/summary?${params.toString()}`)
-    if (!res.ok) return
-
     const json = await res.json()
 
-    const formatted = (json.data || []).map(item => ({
-      type: item.type,
-      quantity: item._sum.quantity || 0
+    const formatted = (json.data || []).map(i => ({
+      type: i.type,
+      quantity: i._sum.quantity || 0
     }))
 
     setChartData(formatted)
-  } catch (err) {
-    console.error(err)
   }
-}
 
   // =========================
-  // 🤖 AI
+  // 🤖 AI FUNCTION
   // =========================
   const handleAI = async () => {
     if (!message.trim()) return
@@ -94,8 +74,6 @@ export default function Dashboard() {
       })
 
       if (!res.ok) {
-        const text = await res.text()
-        console.error(text)
         alert('❌ AI error')
         return
       }
@@ -103,7 +81,6 @@ export default function Dashboard() {
       await res.json()
 
       alert('✅ เพิ่มสินค้าเรียบร้อย')
-
       setMessage('')
       fetchData()
       fetchChart()
@@ -120,22 +97,18 @@ export default function Dashboard() {
   // 🔍 AUTOCOMPLETE
   // =========================
   useEffect(() => {
-    const fetchSuggest = async () => {
+    const delay = setTimeout(async () => {
       if (!search) {
         setSuggestions([])
         return
       }
 
-      try {
-        const res = await fetch(`/api/inventory?name=${search}`)
-        const json = await res.json()
-        setSuggestions(json.data || [])
-      } catch (err) {
-        console.error(err)
-      }
-    }
+      const res = await fetch(`/api/inventory?name=${search}`)
+      const json = await res.json()
+      setSuggestions(json.data || [])
+    }, 300)
 
-    fetchSuggest()
+    return () => clearTimeout(delay)
   }, [search])
 
   const handleSelectProduct = (item) => {
@@ -144,50 +117,23 @@ export default function Dashboard() {
     setLocation(item.location.code)
     setSuggestions([])
 
-    // 🔥 auto search ทันที
     setTimeout(fetchData, 100)
   }
 
   // =========================
-  // 📤 OUTBOUND
+  // 🚨 ALERT
   // =========================
-  const handleOutbound = async () => {
-    if (!selectedProduct) return alert('เลือกสินค้าก่อน')
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const res = await fetch('/api/inventory')
+      const json = await res.json()
 
-    if (outQty <= 0) return alert('จำนวนต้องมากกว่า 0')
+      const low = json.data.filter(i => i.quantity < 5)
+      setAlerts(low)
+    }, 10000)
 
-    if (outQty > selectedProduct.quantity) {
-      return alert('❌ จำนวนสินค้าไม่พอ')
-    }
-
-    try {
-      const res = await fetch('/api/outbound', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId: selectedProduct.product.id,
-          locationId: selectedProduct.location.id,
-          quantity: Number(outQty)
-        })
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        alert(data.error || '❌ error')
-        return
-      }
-
-      alert('✅ เบิกสินค้าเรียบร้อย')
-
-      setSelectedProduct(null)
-      fetchData()
-      fetchChart()
-    } catch (err) {
-      console.error(err)
-      alert('❌ error')
-    }
-  }
+    return () => clearInterval(interval)
+  }, [])
 
   // =========================
   // INIT
@@ -197,33 +143,14 @@ export default function Dashboard() {
     fetchChart()
   }, [])
 
-  // =========================
-  // 🤖 AUTO MONITOR
-  // =========================
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/inventory')
-        const json = await res.json()
-
-        const lowStock = json.data.filter(i => i.quantity < 5)
-        setAlerts(lowStock)
-      } catch (err) {
-        console.error(err)
-      }
-    }, 10000)
-
-    return () => clearInterval(interval)
-  }, [])
-
   return (
-    <div style={{ padding: 20 }}>
-      <h1>📦 WMS Dashboard</h1>
+    <div style={container}>
+      <h1 style={title}>📦 WMS Dashboard</h1>
 
       {/* 🚨 ALERT */}
       {alerts.length > 0 && (
-        <div style={{ background: '#ffe0e0', padding: 10, marginBottom: 20, color: '#000'}}>
-          ⚠️ Low Stock:
+        <div style={card}>
+          <b>⚠️ Low Stock</b>
           {alerts.map(i => (
             <div key={i.id}>
               {i.product.name} ({i.location.code}) เหลือ {i.quantity}
@@ -233,139 +160,184 @@ export default function Dashboard() {
       )}
 
       {/* 🤖 AI */}
-      <div style={{ marginBottom: 20 }}>
-        <h2>🤖 AI Input</h2>
-
+      <div style={card}>
+        <h3>🤖 Input</h3>
         <input
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="รับสินค้า iPhone 15 จำนวน 10 ที่ A1"
-          style={{ width: 400, marginRight: 10 }}
+          style={input}
         />
-
-        <button onClick={handleAI} disabled={aiLoading}>
-          {aiLoading ? 'Processing...' : 'Send'}
+        <button style={btn} onClick={handleAI}>
+          {aiLoading ? 'Loading...' : 'Send'}
         </button>
       </div>
 
       {/* 🔍 SEARCH */}
-      <div style={{ marginBottom: 20, position: 'relative' }}>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search product..."
-        />
+      <div style={card}>
+        <h3>🔍 Search</h3>
 
-        {suggestions.length > 0 && (
-          <div style={{
-            position: 'absolute',
-            background: '#fff',
-            border: '1px solid #ccc',
-            width: 300,
-            zIndex: 10
-          }}>
-            {suggestions.map(item => (
-              <div
-                key={item.id}
-                onClick={() => handleSelectProduct(item)}
-                style={{ padding: 5, cursor: 'pointer' }}
-              >
-                {item.product.name} ({item.location.code})
-              </div>
-            ))}
-          </div>
-        )}
+        <div style={{ position: 'relative' }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Product"
+            style={input}
+          />
+
+          {suggestions.length > 0 && (
+            <div style={dropdown}>
+              {suggestions.map(item => (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelectProduct(item)}
+                  style={dropdownItem}
+                >
+                  {item.product.name} ({item.location.code})
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <input
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Location"
-          style={{ marginLeft: 10 }}
+          style={input}
         />
 
-        <button onClick={fetchData}>Search</button>
-      </div>
-
-      {/* 📤 OUTBOUND */}
-      <div style={{ marginBottom: 20 }}>
-        <h3>📤 Outbound</h3>
-
-        {selectedProduct && (
-          <p>
-            Selected: {selectedProduct.product.name} ({selectedProduct.location.code})
-          </p>
-        )}
-
-        <input
-          type="number"
-          value={outQty}
-          onChange={(e) => setOutQty(e.target.value)}
-        />
-
-        <button onClick={handleOutbound}>เอาสินค้าออก</button>
+        <button style={btn} onClick={fetchData}>
+          Search
+        </button>
       </div>
 
       {/* 📊 CHART */}
-      <h2>📊 Transaction Summary</h2>
-      <div style={{ marginBottom: 20 }}>
-  <h3>📅 Filter by Date</h3>
+      <div style={card}>
+        <h3>📊 Transactions</h3>
 
-  <input
-    type="date"
-    value={startDate}
-    onChange={(e) => setStartDate(e.target.value)}
-  />
+        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ marginLeft: 10 }} />
+        <button style={btn} onClick={fetchChart}>Apply</button>
 
-  <input
-    type="date"
-    value={endDate}
-    onChange={(e) => setEndDate(e.target.value)}
-    style={{ marginLeft: 10 }}
-  />
-
-  <button onClick={fetchChart} style={{ marginLeft: 10 }}>
-    Apply
-  </button>
-</div>
-      {chartData.length > 0 ? (
-        <BarChart width={500} height={300} data={chartData}>
-  <CartesianGrid strokeDasharray="3 3" />
-  <XAxis dataKey="type" />
-  <YAxis />
-  <Tooltip />
-  <Bar dataKey="quantity" fill="#3b82f6"/>
-</BarChart>
-      ) : (
-        <p>No chart data</p>
-      )}
+        <div style={{ marginTop: 20 }}>
+          {chartData.length > 0 ? (
+            <BarChart width={500} height={250} data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="type" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="quantity" fill="#3b82f6" />
+            </BarChart>
+          ) : (
+            <p>No data</p>
+          )}
+        </div>
+      </div>
 
       {/* 📦 TABLE */}
-      {loading && <p>Loading...</p>}
+      <div style={card}>
+        <h3>📦 Inventory</h3>
 
-      {!loading && data.length === 0 && <p>No data found</p>}
+        {loading && <p>Loading...</p>}
 
-      {!loading && data.length > 0 && (
-        <table border="1" cellPadding="10" style={{ marginTop: 20 }}>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Location</th>
-              <th>Quantity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map(item => (
-              <tr key={item.id}>
-                <td>{item.product.name}</td>
-                <td>{item.location.code}</td>
-                <td style={{ color: item.quantity < 5 ? 'red' : '' }}>
-                  {item.quantity}
-                </td>
+        {!loading && (
+          <table style={table}>
+            <thead>
+              <tr>
+                <th style={th}>Product</th>
+                <th style={th}>Location</th>
+                <th style={th}>Quantity</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+
+            <tbody>
+              {data.map(i => (
+                <tr key={i.id}>
+                  <td style={td}>{i.product.name}</td>
+                  <td style={td}>{i.location.code}</td>
+                  <td style={{
+                    ...td,
+                    color: i.quantity < 5 ? 'red' : '#000'
+                  }}>
+                    {i.quantity}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
+}
+
+// 🎨 STYLE
+const container = {
+  padding: 30,
+  background: '#f8fafc',
+  minHeight: '100vh',
+  color: '#000'
+}
+
+const title = {
+  fontSize: 24,
+  fontWeight: 600,
+  marginBottom: 20
+}
+
+const card = {
+  background: '#fff',
+  padding: 20,
+  borderRadius: 10,
+  marginBottom: 20,
+  border: '1px solid #e5e7eb'
+}
+
+const input = {
+  padding: 8,
+  marginTop: 10,
+  marginRight: 10,
+  border: '1px solid #ccc',
+  borderRadius: 6,
+  color: '#000'
+}
+
+const btn = {
+  padding: '8px 14px',
+  marginLeft: 5 ,
+  background: '#3b82f6',
+  color: '#fff',
+  border: '1px solid #ccc',
+  borderRadius: 6,
+  cursor: 'pointer'
+}
+
+const dropdown = {
+  position: 'absolute',
+  background: '#fff',
+  border: '1px solid #ccc',
+  width: 250,
+  zIndex: 10
+}
+
+const dropdownItem = {
+  padding: 8,
+  cursor: 'pointer'
+}
+
+const table = {
+  width: '100%',
+  borderCollapse: 'collapse'
+}
+
+const th = {
+  padding: 10,
+  borderBottom: '1px solid #ddd',
+  textAlign: 'left'
+}
+
+const td = {
+  padding: 10,
+  borderBottom: '1px solid #eee'
 }
