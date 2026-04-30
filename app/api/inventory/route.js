@@ -1,46 +1,50 @@
-import { prisma } from '@/lib/prisma'
-
 export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url)
+  const { searchParams } = new URL(req.url)
 
-    const name = searchParams.get('name')
-    const locationCode = searchParams.get('locationCode')
+  const name = searchParams.get('name')
+  const locationCode = searchParams.get('locationCode')
 
-    const inventories = await prisma.inventory.findMany({
-      where: {
-        ...(name && {
-          product: {
-            name: {
-              contains: name,
-            }
-          }
-        }),
-        ...(locationCode && {
-          location: {
-            code: locationCode
-          }
-        })
-      },
+  // ✅ pagination
+  const page = Number(searchParams.get('page') || 1)
+  const limit = Number(searchParams.get('limit') || 10)
+  const skip = (page - 1) * limit
+
+  const where = {
+    ...(name && {
+      product: {
+        name: {
+          contains: name
+        }
+      }
+    }),
+
+    ...(locationCode && {
+      location: {
+        code: locationCode
+      }
+    })
+  }
+
+  const [data, total] = await Promise.all([
+    prisma.inventory.findMany({
+      where,
       include: {
         product: true,
         location: true
       },
-      orderBy: {
-        id: 'desc'
-      }
-    })
+      skip,
+      take: limit
+    }),
+    prisma.inventory.count({ where })
+  ])
 
-    return Response.json({
-      data: inventories
-    })
-
-  } catch (error) {
-    console.error(error)
-
-    return Response.json(
-      { error: error.message },
-      { status: 500 }
-    )
-  }
+  return Response.json({
+    data,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    }
+  })
 }

@@ -22,22 +22,41 @@ export default function Dashboard() {
   const [message, setMessage] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
 
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
   // =========================
   // 📦 FETCH INVENTORY
   // =========================
   const fetchData = async () => {
     setLoading(true)
 
-    const params = new URLSearchParams()
-    if (search) params.append('name', search)
-    if (location) params.append('locationCode', location)
+    try {
+      const params = new URLSearchParams()
 
-    const res = await fetch(`/api/inventory?${params.toString()}`)
-    const json = await res.json()
+      if (search) params.append('name', search)
+      if (location) params.append('locationCode', location)
 
-    setData(json.data || [])
+      params.append('page', page)
+      params.append('limit', 10)
+
+      const res = await fetch(`/api/inventory?${params.toString()}`)
+      const json = await res.json()
+
+      setData(json.data || [])
+      setTotalPages(json.pagination?.totalPages || 1)
+
+    } catch (err) {
+      console.error(err)
+    }
+
     setLoading(false)
   }
+
+  // 🔁 โหลดใหม่เมื่อ page เปลี่ยน
+  useEffect(() => {
+    fetchData()
+  }, [page])
 
   // =========================
   // 📊 FETCH CHART
@@ -59,7 +78,7 @@ export default function Dashboard() {
   }
 
   // =========================
-  // 🤖 AI FUNCTION
+  // 🤖 AI
   // =========================
   const handleAI = async () => {
     if (!message.trim()) return
@@ -73,10 +92,7 @@ export default function Dashboard() {
         body: JSON.stringify({ message })
       })
 
-      if (!res.ok) {
-        alert('❌ AI error')
-        return
-      }
+      if (!res.ok) return alert('❌ AI error')
 
       await res.json()
 
@@ -87,7 +103,6 @@ export default function Dashboard() {
 
     } catch (err) {
       console.error(err)
-      alert('❌ Network error')
     }
 
     setAiLoading(false)
@@ -98,13 +113,11 @@ export default function Dashboard() {
   // =========================
   useEffect(() => {
     const delay = setTimeout(async () => {
-      if (!search) {
-        setSuggestions([])
-        return
-      }
+      if (!search) return setSuggestions([])
 
-      const res = await fetch(`/api/inventory?name=${search}`)
+      const res = await fetch(`/api/inventory?name=${search}&limit=5`)
       const json = await res.json()
+
       setSuggestions(json.data || [])
     }, 300)
 
@@ -117,18 +130,18 @@ export default function Dashboard() {
     setLocation(item.location.code)
     setSuggestions([])
 
-    setTimeout(fetchData, 100)
+    setPage(1)
   }
 
   // =========================
-  // 🚨 ALERT
+  // 🚨 ALERT (เบาขึ้น)
   // =========================
   useEffect(() => {
     const interval = setInterval(async () => {
-      const res = await fetch('/api/inventory')
+      const res = await fetch('/api/inventory?limit=20')
       const json = await res.json()
 
-      const low = json.data.filter(i => i.quantity < 5)
+      const low = (json.data || []).filter(i => i.quantity < 5)
       setAlerts(low)
     }, 10000)
 
@@ -139,7 +152,6 @@ export default function Dashboard() {
   // INIT
   // =========================
   useEffect(() => {
-    fetchData()
     fetchChart()
   }, [])
 
@@ -147,7 +159,7 @@ export default function Dashboard() {
     <div style={container}>
       <h1 style={title}>📦 WMS Dashboard</h1>
 
-      {/* 🚨 ALERT */}
+      {/* ALERT */}
       {alerts.length > 0 && (
         <div style={card}>
           <b>⚠️ Low Stock</b>
@@ -159,9 +171,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🤖 AI */}
+      {/* AI */}
       <div style={card}>
-        <h3>🤖 Input</h3>
+        <h3>🤖 AI Input</h3>
         <input
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -173,7 +185,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* 🔍 SEARCH */}
+      {/* SEARCH */}
       <div style={card}>
         <h3>🔍 Search</h3>
 
@@ -207,12 +219,18 @@ export default function Dashboard() {
           style={input}
         />
 
-        <button style={btn} onClick={fetchData}>
+        <button
+          style={btn}
+          onClick={() => {
+            setPage(1)
+            fetchData()
+          }}
+        >
           Search
         </button>
       </div>
 
-      {/* 📊 CHART */}
+      {/* CHART */}
       <div style={card}>
         <h3>📊 Transactions</h3>
 
@@ -235,109 +253,65 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 📦 TABLE */}
+      {/* TABLE */}
       <div style={card}>
         <h3>📦 Inventory</h3>
 
         {loading && <p>Loading...</p>}
 
         {!loading && (
-          <table style={table}>
-            <thead>
-              <tr>
-                <th style={th}>Product</th>
-                <th style={th}>Location</th>
-                <th style={th}>Quantity</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {data.map(i => (
-                <tr key={i.id}>
-                  <td style={td}>{i.product.name}</td>
-                  <td style={td}>{i.location.code}</td>
-                  <td style={{
-                    ...td,
-                    color: i.quantity < 5 ? 'red' : '#000'
-                  }}>
-                    {i.quantity}
-                  </td>
+          <>
+            <table style={table}>
+              <thead>
+                <tr>
+                  <th style={th}>Product</th>
+                  <th style={th}>Location</th>
+                  <th style={th}>Quantity</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {data.map(i => (
+                  <tr key={i.id}>
+                    <td style={td}>{i.product.name}</td>
+                    <td style={td}>{i.location.code}</td>
+                    <td style={{ ...td, color: i.quantity < 5 ? 'red' : '#000' }}>
+                      {i.quantity}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* PAGINATION */}
+            <div style={{ marginTop: 15 }}>
+              <button disabled={page === 1} onClick={() => setPage(page - 1)} style={btn}>
+                Prev
+              </button>
+
+              <span style={{ margin: '0 10px' }}>
+                Page {page} / {totalPages}
+              </span>
+
+              <button disabled={page === totalPages} onClick={() => setPage(page + 1)} style={btn}>
+                Next
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
   )
 }
 
-// 🎨 STYLE
-const container = {
-  padding: 30,
-  background: '#f8fafc',
-  minHeight: '100vh',
-  color: '#000'
-}
-
-const title = {
-  fontSize: 24,
-  fontWeight: 600,
-  marginBottom: 20
-}
-
-const card = {
-  background: '#fff',
-  padding: 20,
-  borderRadius: 10,
-  marginBottom: 20,
-  border: '1px solid #e5e7eb'
-}
-
-const input = {
-  padding: 8,
-  marginTop: 10,
-  marginRight: 10,
-  border: '1px solid #ccc',
-  borderRadius: 6,
-  color: '#000'
-}
-
-const btn = {
-  padding: '8px 14px',
-  marginLeft: 5 ,
-  background: '#3b82f6',
-  color: '#fff',
-  border: '1px solid #ccc',
-  borderRadius: 6,
-  cursor: 'pointer'
-}
-
-const dropdown = {
-  position: 'absolute',
-  background: '#fff',
-  border: '1px solid #ccc',
-  width: 250,
-  zIndex: 10
-}
-
-const dropdownItem = {
-  padding: 8,
-  cursor: 'pointer'
-}
-
-const table = {
-  width: '100%',
-  borderCollapse: 'collapse'
-}
-
-const th = {
-  padding: 10,
-  borderBottom: '1px solid #ddd',
-  textAlign: 'left'
-}
-
-const td = {
-  padding: 10,
-  borderBottom: '1px solid #eee'
-}
+// STYLE
+const container = { padding: 30, background: '#f8fafc', minHeight: '100vh', color: '#000' }
+const title = { fontSize: 24, fontWeight: 600, marginBottom: 20 }
+const card = { background: '#fff', padding: 20, borderRadius: 10, marginBottom: 20, border: '1px solid #e5e7eb' }
+const input = { padding: 8, marginTop: 10, marginRight: 10, border: '1px solid #ccc', borderRadius: 6, color: '#000' }
+const btn = { padding: '8px 14px', marginLeft: 5, background: '#3b82f6', color: '#fff', borderRadius: 6, cursor: 'pointer' }
+const dropdown = { position: 'absolute', background: '#fff', border: '1px solid #ccc', width: 250, zIndex: 10 }
+const dropdownItem = { padding: 8, cursor: 'pointer' }
+const table = { width: '100%', borderCollapse: 'collapse' }
+const th = { padding: 10, borderBottom: '1px solid #ddd', textAlign: 'left' }
+const td = { padding: 10, borderBottom: '1px solid #eee' }
