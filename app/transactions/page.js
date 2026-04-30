@@ -11,32 +11,41 @@ export default function TransactionsPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
   const [suggestions, setSuggestions] = useState([])
 
   // =========================
   // 📦 FETCH
   // =========================
   const fetchData = async () => {
-    setLoading(true)
+  setLoading(true)
 
-    try {
-      const params = new URLSearchParams()
+  try {
+    const params = new URLSearchParams()
 
-      if (search) params.append('name', search)
-      if (type) params.append('type', type)
-      if (startDate) params.append('startDate', startDate)
-      if (endDate) params.append('endDate', endDate)
+    if (search) params.append('name', search)
+    if (type) params.append('type', type)
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
 
-      const res = await fetch(`/api/transactions?${params.toString()}`)
-      const json = await res.json()
+    // ✅ pagination
+    params.append('page', page)
+    params.append('limit', 10)
 
-      setData(json.data || [])
-    } catch (err) {
-      console.error(err)
-    }
+    const res = await fetch(`/api/transactions?${params.toString()}`)
+    const json = await res.json()
 
-    setLoading(false)
+    setData(json.data || [])
+    setTotalPages(json.pagination?.totalPages || 1)
+
+  } catch (err) {
+    console.error(err)
   }
+
+  setLoading(false)
+}
 
   // =========================
   // 🔍 AUTOCOMPLETE
@@ -63,8 +72,8 @@ export default function TransactionsPage() {
   }
 
   useEffect(() => {
-    fetchData()
-  }, [])
+  fetchData()
+}, [page])
 
   return (
     <div style={container}>
@@ -107,9 +116,12 @@ export default function TransactionsPage() {
           <option value="OUT">OUT</option>
         </select>
 
-        <button style={btn} onClick={fetchData}>
-          Search
-        </button>
+        <button onClick={() => {
+  setPage(1)
+  fetchData()
+}}>
+  Search
+</button>
       </div>
 
       {/* 📅 DATE */}
@@ -178,6 +190,27 @@ export default function TransactionsPage() {
           </table>
         )}
       </div>
+      <div style={{ marginTop: 20 }}>
+  <button
+    disabled={page === 1}
+    onClick={() => setPage(page - 1)}
+    style={btn}
+  >
+    Prev
+  </button>
+
+  <span style={{ margin: '0 10px' }}>
+    Page {page} / {totalPages}
+  </span>
+
+  <button
+    disabled={page === totalPages}
+    onClick={() => setPage(page + 1)}
+    style={btn}
+  >
+    Next
+  </button>
+</div>
     </div>
   )
 }

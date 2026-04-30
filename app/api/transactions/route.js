@@ -9,6 +9,11 @@ export async function GET(req) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
+    // ✅ pagination
+    const page = Number(searchParams.get('page') || 1)
+    const limit = Number(searchParams.get('limit') || 10)
+    const skip = (page - 1) * limit
+
     const where = {
       ...(type && { type }),
 
@@ -20,7 +25,6 @@ export async function GET(req) {
         }
       }),
 
-      // 🔥 สำคัญมาก
       ...(startDate && endDate && {
         createdAt: {
           gte: new Date(startDate),
@@ -29,17 +33,32 @@ export async function GET(req) {
       })
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where,
-      include: {
-        product: true
-      },
-      orderBy: {
-        createdAt: 'desc'
+    // 🔥 ยิง 2 query
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          product: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        skip,
+        take: limit
+      }),
+
+      prisma.transaction.count({ where })
+    ])
+
+    return Response.json({
+      data: transactions,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
       }
     })
-
-    return Response.json({ data: transactions })
 
   } catch (error) {
     console.error(error)
