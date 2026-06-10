@@ -25,6 +25,8 @@ export default function Dashboard() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
+  const [user, setUser] = useState(null)
+
   // =========================
   // 📦 FETCH INVENTORY
   // =========================
@@ -149,6 +151,24 @@ export default function Dashboard() {
   }, [])
 
   // =========================
+  // 🔐 AUTH CHECK
+  // =========================
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+
+    if (!token) {
+      window.location.href = '/login'
+      return
+    }
+
+    const userData = localStorage.getItem('user')
+
+      if (userData) {
+      setUser(JSON.parse(userData))
+    }
+  }, [])
+
+  // =========================
   // INIT
   // =========================
   useEffect(() => {
@@ -158,6 +178,35 @@ export default function Dashboard() {
   return (
     <div style={container}>
       <h1 style={title}>📦 WMS Dashboard</h1>
+      {user && (
+        <div
+          style={{
+            background: '#fff',
+            padding: 15,
+            borderRadius: 10,
+            marginBottom: 20,
+            border: '1px solid #e5e7eb'
+          }}
+        >
+          <div>
+            <strong>Welcome :</strong> {user.name}
+          </div>
+
+          <div>
+            <strong>Role :</strong> {user.role}
+          </div>
+          <button
+            style={btn}
+              onClick={() => {
+                localStorage.removeItem('token')
+                localStorage.removeItem('user')
+                window.location.href = '/login'
+              }}
+          >
+            Logout
+          </button>
+        </div>
+      )}
 
       {/* ALERT */}
       {alerts.length > 0 && (
