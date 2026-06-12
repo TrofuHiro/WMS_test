@@ -38,6 +38,7 @@ export default function Dashboard() {
 const [showOutbound, setShowOutbound] =
   useState(false)
 
+
 const [inboundForm, setInboundForm] =
   useState({
     name: '',
@@ -749,6 +750,10 @@ const handleSelectOutboundLocation = (
   <div style={statCard}>
     <h2>{stats.outbound}</h2>
     <p>Outbound</p>
+  </div>
+  <div style={statCard}>
+    <h2>{stats.inbound-stats.outbound}</h2>
+    <p>Available Stock</p>
   </div>
 
 </div>

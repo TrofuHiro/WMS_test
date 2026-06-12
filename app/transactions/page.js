@@ -119,7 +119,7 @@ export default function TransactionsPage() {
           <option value="OUT">OUT</option>
         </select>
 
-        <button onClick={() => {
+        <button style={btn} onClick={() => {
   setPage(1)
   fetchData()
 }}>
