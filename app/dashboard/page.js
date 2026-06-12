@@ -704,28 +704,63 @@ const handleSelectOutboundLocation = (
         </button>
       </div>
 
-      {/* CHART */}
-      <div style={card}>
-        <h3>📊 Transactions</h3>
+      {/* CHART - ADMIN ONLY */}
+{user?.role === 'ADMIN' && (
 
-        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ marginLeft: 10 }} />
-        <button style={btn} onClick={fetchChart}>Apply</button>
+  <div style={card}>
 
-        <div style={{ marginTop: 20 }}>
-          {chartData.length > 0 ? (
-            <BarChart width={500} height={250} data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="type" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="quantity" fill="#3b82f6" />
-            </BarChart>
-          ) : (
-            <p>No data</p>
-          )}
-        </div>
-      </div>
+    <h3>📊 Transactions</h3>
+
+    <input
+      type="date"
+      value={startDate}
+      onChange={e => setStartDate(e.target.value)}
+    />
+
+    <input
+      type="date"
+      value={endDate}
+      onChange={e => setEndDate(e.target.value)}
+      style={{ marginLeft: 10 }}
+    />
+
+    <button
+      style={btn}
+      onClick={fetchChart}
+    >
+      Apply
+    </button>
+
+    <div style={{ marginTop: 20 }}>
+
+      {chartData.length > 0 ? (
+
+        <BarChart
+          width={500}
+          height={250}
+          data={chartData}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="type" />
+          <YAxis />
+          <Tooltip />
+          <Bar
+            dataKey="quantity"
+            fill="#3b82f6"
+          />
+        </BarChart>
+
+      ) : (
+
+        <p>No data</p>
+
+      )}
+
+    </div>
+
+  </div>
+
+)}
       {showInbound && (
 
   <div style={modalOverlay}>
