@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
@@ -553,7 +554,9 @@ const handleSelectOutboundLocation = (
 
   return (
     <div style={container}>
-      <h1 style={title}>📦 WMS Dashboard</h1>
+      <Link href="/">
+        <h1 style={title}>📦 WMS Dashboard</h1>
+      </Link>
       {user && (
   <div style={userCard}>
 

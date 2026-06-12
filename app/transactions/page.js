@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 export default function TransactionsPage() {
   const [data, setData] = useState([])
@@ -77,7 +78,9 @@ export default function TransactionsPage() {
 
   return (
     <div style={container}>
-      <h1 style={title}>📑 Transactions</h1>
+        <Link href="/">
+          <h1 style={title}>📑 Transactions</h1>
+        </Link>
 
       {/* 🔍 SEARCH */}
       <div style={card}>
