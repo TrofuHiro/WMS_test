@@ -15,6 +15,10 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState('')
 
   const [suggestions, setSuggestions] = useState([])
+  const [inboundSuggestions, setInboundSuggestions] =
+  useState([])
+  const [locationSuggestions, setLocationSuggestions] =
+  useState([])
   const [selectedProduct, setSelectedProduct] = useState(null)
 
   const [alerts, setAlerts] = useState([])
@@ -26,6 +30,38 @@ export default function Dashboard() {
   const [totalPages, setTotalPages] = useState(1)
 
   const [user, setUser] = useState(null)
+
+  const [showInbound, setShowInbound] =
+  useState(false)
+
+const [showOutbound, setShowOutbound] =
+  useState(false)
+
+const [inboundForm, setInboundForm] =
+  useState({
+    name: '',
+    quantity: '',
+    locationCode: ''
+  })
+
+const [outboundForm, setOutboundForm] =
+useState({
+  productName: '',
+  locationCode: '',
+  quantity: ''
+})
+const [outboundProductSuggestions,
+  setOutboundProductSuggestions] =
+  useState([])
+
+const [outboundLocationSuggestions,
+  setOutboundLocationSuggestions] =
+  useState([])
+
+  const [stats, setStats] = useState({
+  inbound: 0,
+  outbound: 0
+})
 
   // =========================
   // 📦 FETCH INVENTORY
@@ -79,36 +115,142 @@ export default function Dashboard() {
     setChartData(formatted)
   }
 
-  // =========================
-  // 🤖 AI
-  // =========================
-  const handleAI = async () => {
-    if (!message.trim()) return
+  const fetchStats = async () => {
+  try {
 
-    setAiLoading(true)
+    const inventoryRes =
+      await fetch('/api/inventory?limit=1')
 
-    try {
-      const res = await fetch('/api/ai-inbound', {
+    const inventoryJson =
+      await inventoryRes.json()
+
+    const summaryRes =
+      await fetch('/api/transactions/summary')
+
+    const summaryJson =
+      await summaryRes.json()
+
+    const inbound =
+      summaryJson.data?.find(
+        x => x.type === 'IN'
+      )?._sum?.quantity || 0
+
+    const outbound =
+      summaryJson.data?.find(
+        x => x.type === 'OUT'
+      )?._sum?.quantity || 0
+
+    setStats({
+      inbound,
+      outbound
+    })
+
+  } catch (err) {
+    console.error(err)
+  }
+}
+const handleInbound = async () => {
+
+  const token =
+    localStorage.getItem('token')
+
+  try {
+
+    const res =
+      await fetch('/api/inbound', {
+
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          Authorization:
+            `Bearer ${token}`
+        },
+
+        body: JSON.stringify(
+          inboundForm
+        )
       })
 
-      if (!res.ok) return alert('❌ AI error')
-
+    const data =
       await res.json()
 
-      alert('✅ เพิ่มสินค้าเรียบร้อย')
-      setMessage('')
-      fetchData()
-      fetchChart()
-
-    } catch (err) {
-      console.error(err)
+    if (!res.ok) {
+      return alert(data.error)
     }
 
-    setAiLoading(false)
+    alert('✅ Inbound Success')
+
+    setShowInbound(false)
+
+    setInboundForm({
+      name: '',
+      quantity: '',
+      locationCode: ''
+    })
+
+    fetchData()
+    fetchChart()
+    fetchStats()
+
+  } catch (err) {
+    console.error(err)
   }
+}
+const handleOutbound = async () => {
+
+  const token =
+    localStorage.getItem('token')
+
+  try {
+
+    const res =
+      await fetch('/api/outbound', {
+
+        method: 'POST',
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          Authorization:
+            `Bearer ${token}`
+        },
+
+        body: JSON.stringify({
+  productName: outboundForm.productName,
+  locationCode: outboundForm.locationCode,
+  quantity: Number(outboundForm.quantity)
+})
+      })
+
+    const data =
+      await res.json()
+
+    if (!res.ok) {
+      return alert(data.error)
+    }
+
+    alert('✅ Outbound Success')
+
+    setShowOutbound(false)
+
+    setOutboundForm({
+  productName: '',
+  locationCode: '',
+  quantity: ''
+})
+
+    fetchData()
+    fetchChart()
+    fetchStats()
+
+  } catch (err) {
+    console.error(err)
+  }
+}
 
   // =========================
   // 🔍 AUTOCOMPLETE
@@ -125,6 +267,239 @@ export default function Dashboard() {
 
     return () => clearTimeout(delay)
   }, [search])
+  useEffect(() => {
+
+  const delay = setTimeout(async () => {
+
+    if (!inboundForm.name) {
+      setInboundSuggestions([])
+      return
+    }
+
+    try {
+
+      const res = await fetch(
+        `/api/inventory?name=${inboundForm.name}&limit=5`
+      )
+
+      const json = await res.json()
+
+      const uniqueProducts = []
+
+      const names = new Set()
+
+      ;(json.data || []).forEach(item => {
+
+        if (!names.has(item.product.name)) {
+
+          names.add(item.product.name)
+
+          uniqueProducts.push({
+            id: item.product.id,
+            name: item.product.name
+          })
+        }
+      })
+
+      setInboundSuggestions(uniqueProducts)
+
+    } catch (err) {
+      console.error(err)
+    }
+
+  }, 300)
+  
+  return () => clearTimeout(delay)
+
+}, [inboundForm.name])
+useEffect(() => {
+
+  const delay = setTimeout(async () => {
+
+    if (!outboundForm.productName) {
+      setOutboundProductSuggestions([])
+      return
+    }
+
+    try {
+
+      const res = await fetch(
+        `/api/inventory?name=${outboundForm.productName}&limit=5`
+      )
+
+      const json = await res.json()
+
+      const names = new Set()
+      const products = []
+
+      ;(json.data || []).forEach(item => {
+
+        if (!names.has(item.product.name)) {
+
+          names.add(item.product.name)
+
+          products.push({
+            id: item.product.id,
+            name: item.product.name
+          })
+
+        }
+
+      })
+
+      setOutboundProductSuggestions(products)
+
+    } catch (err) {
+      console.error(err)
+    }
+
+  }, 300)
+
+  return () => clearTimeout(delay)
+
+}, [outboundForm.productName])
+useEffect(() => {
+
+  const delay = setTimeout(async () => {
+
+    if (!outboundForm.locationCode) {
+      setOutboundLocationSuggestions([])
+      return
+    }
+
+    try {
+
+      const res = await fetch(
+        `/api/inventory?locationCode=${outboundForm.locationCode}&limit=5`
+      )
+
+      const json = await res.json()
+
+      const codes = new Set()
+      const locations = []
+
+      ;(json.data || []).forEach(item => {
+
+        if (!item.location) return
+
+        if (!codes.has(item.location.code)) {
+
+          codes.add(item.location.code)
+
+          locations.push({
+            id: item.location.id,
+            code: item.location.code
+          })
+
+        }
+
+      })
+
+      setOutboundLocationSuggestions(locations)
+
+    } catch (err) {
+      console.error(err)
+    }
+
+  }, 300)
+
+  return () => clearTimeout(delay)
+
+}, [outboundForm.locationCode])
+useEffect(() => {
+
+  const delay = setTimeout(async () => {
+
+    if (!inboundForm.locationCode) {
+      setLocationSuggestions([])
+      return
+    }
+
+    try {
+
+      const res = await fetch(
+        `/api/inventory?locationCode=${inboundForm.locationCode}&limit=5`
+      )
+
+      const json = await res.json()
+
+      const uniqueLocations = []
+
+      const codes = new Set()
+
+      ;(json.data || []).forEach(item => {
+
+  if (!item.location) return
+
+  if (!codes.has(item.location.code)) {
+
+    codes.add(item.location.code)
+
+    uniqueLocations.push({
+      id: item.location.id,
+      code: item.location.code
+    })
+
+  }
+
+})
+
+      setLocationSuggestions(
+        uniqueLocations
+      )
+
+    } catch (err) {
+      console.error(err)
+    }
+
+  }, 300)
+
+  return () => clearTimeout(delay)
+
+}, [inboundForm.locationCode])
+const handleSelectLocation = (
+  location
+) => {
+
+  setInboundForm(prev => ({
+    ...prev,
+    locationCode: location.code
+  }))
+
+  setLocationSuggestions([])
+}
+  const handleSelectInboundProduct = (product) => {
+
+  setInboundForm(prev => ({
+    ...prev,
+    name: product.name
+  }))
+
+  setInboundSuggestions([])
+}
+const handleSelectOutboundProduct = (
+  product
+) => {
+
+  setOutboundForm(prev => ({
+    ...prev,
+    productName: product.name
+  }))
+
+  setOutboundProductSuggestions([])
+}
+
+const handleSelectOutboundLocation = (
+  location
+) => {
+
+  setOutboundForm(prev => ({
+    ...prev,
+    locationCode: location.code
+  }))
+
+  setOutboundLocationSuggestions([])
+}
 
   const handleSelectProduct = (item) => {
     setSelectedProduct(item)
@@ -172,42 +547,110 @@ export default function Dashboard() {
   // INIT
   // =========================
   useEffect(() => {
-    fetchChart()
-  }, [])
+  fetchChart()
+  fetchStats()
+}, [])
 
   return (
     <div style={container}>
       <h1 style={title}>📦 WMS Dashboard</h1>
       {user && (
-        <div
-          style={{
-            background: '#fff',
-            padding: 15,
-            borderRadius: 10,
-            marginBottom: 20,
-            border: '1px solid #e5e7eb'
-          }}
-        >
-          <div>
-            <strong>Welcome :</strong> {user.name}
-          </div>
+  <div style={userCard}>
 
-          <div>
-            <strong>Role :</strong> {user.role}
-          </div>
-          <button
-            style={btn}
-              onClick={() => {
-                localStorage.removeItem('token')
-                localStorage.removeItem('user')
-                window.location.href = '/login'
-              }}
-          >
-            Logout
+    <div>
+      <h2>
+        Welcome, {user.name}
+      </h2>
+
+      <div>
+        Role : {user.role}
+      </div>
+    </div>
+
+    <button
+      style={logoutBtn}
+      onClick={() => {
+
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+
+        window.location.href =
+          '/login'
+      }}
+    >
+      Logout
+    </button>
+
+  </div>
+)}
+{user && (
+  <div style={card}>
+
+    <h3>📋 Menu</h3>
+
+    <div style={menuGrid}>
+
+      {user.role === 'ADMIN' && (
+        <>
+          <button style={menuBtn}>
+            📦 Products
           </button>
-        </div>
+
+          <button style={menuBtn}>
+            🏭 Warehouses
+          </button>
+
+          <button style={menuBtn}>
+            👥 Users
+          </button>
+
+          <button style={menuBtn}>
+            📊 Reports
+          </button>
+        </>
       )}
 
+      {user.role === 'STAFF' && (
+        <>
+          <button
+  style={menuBtn}
+  onClick={() =>
+    setShowInbound(true)
+  }
+>
+  📥 Inbound
+</button>
+<button
+  style={menuBtn}
+  onClick={() =>
+    setShowOutbound(true)
+  }
+>
+  📤 Outbound
+</button>
+          <button style={menuBtn}>
+            📦 Inventory
+          </button>
+        </>
+      )}
+
+    </div>
+
+  </div>
+)}
+      <div style={statsGrid}>
+
+  <div style={statCard}>
+    <h2>{stats.inbound}</h2>
+    <p>Inbound</p>
+  </div>
+
+  <div style={statCard}>
+    <h2>{stats.outbound}</h2>
+    <p>Outbound</p>
+  </div>
+
+</div>
       {/* ALERT */}
       {alerts.length > 0 && (
         <div style={card}>
@@ -219,21 +662,6 @@ export default function Dashboard() {
           ))}
         </div>
       )}
-
-      {/* AI */}
-      <div style={card}>
-        <h3>🤖 AI Input</h3>
-        <input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="รับสินค้า iPhone 15 จำนวน 10 ที่ A1"
-          style={input}
-        />
-        <button style={btn} onClick={handleAI}>
-          {aiLoading ? 'Loading...' : 'Send'}
-        </button>
-      </div>
-
       {/* SEARCH */}
       <div style={card}>
         <h3>🔍 Search</h3>
@@ -301,7 +729,262 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      {showInbound && (
 
+  <div style={modalOverlay}>
+
+    <div style={modal}>
+
+      <h2>
+        📥 Inbound
+      </h2>
+
+      <div
+  style={{
+    position: 'relative'
+  }}
+>
+
+  <input
+    placeholder="Product Name"
+    value={inboundForm.name}
+    onChange={(e)=>
+      setInboundForm({
+        ...inboundForm,
+        name:e.target.value
+      })
+    }
+    style={input}
+  />
+
+  {inboundSuggestions.length > 0 && (
+
+    <div style={dropdown}>
+
+      {inboundSuggestions.map(
+        product => (
+
+          <div
+            key={product.id}
+            style={dropdownItem}
+            onClick={() =>
+              handleSelectInboundProduct(
+                product
+              )
+            }
+          >
+            {product.name}
+          </div>
+
+        )
+      )}
+
+    </div>
+
+  )}
+
+</div>
+
+      <input
+        type="number"
+        placeholder="Quantity"
+        value={inboundForm.quantity}
+        onChange={(e)=>
+          setInboundForm({
+            ...inboundForm,
+            quantity:e.target.value
+          })
+        }
+        style={input}
+      />
+  <div style={{ position: 'relative' }}>
+
+  <input
+    placeholder="Location Code"
+    value={inboundForm.locationCode}
+    onChange={(e)=>
+      setInboundForm({
+        ...inboundForm,
+        locationCode: e.target.value
+      })
+    }
+    style={input}
+  />
+
+  {locationSuggestions.length > 0 && (
+
+    <div style={dropdown}>
+
+      {locationSuggestions.map(
+        location => (
+
+          <div
+            key={location.id}
+            style={dropdownItem}
+            onClick={() =>
+              handleSelectLocation(
+                location
+              )
+            }
+          >
+            {location.code}
+          </div>
+
+        )
+      )}
+
+    </div>
+
+  )}
+
+</div>
+
+      <div>
+
+        <button
+          style={btn}
+          onClick={handleInbound}
+        >
+          Save
+        </button>
+
+        <button
+          style={closeBtn}
+          onClick={() =>
+            setShowInbound(false)
+          }
+        >
+          Close
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+)}
+{showOutbound && (
+
+  <div style={modalOverlay}>
+
+    <div style={modal}>
+
+      <h2>
+        📤 Outbound
+      </h2>
+
+      <div style={{ position: 'relative' }}>
+
+  <input
+    placeholder="Product Name"
+    value={outboundForm.productName}
+    onChange={(e) =>
+      setOutboundForm({
+        ...outboundForm,
+        productName: e.target.value
+      })
+    }
+    style={input}
+  />
+
+  {outboundProductSuggestions.length > 0 && (
+
+    <div style={dropdown}>
+
+      {outboundProductSuggestions.map(product => (
+
+        <div
+          key={product.id}
+          style={dropdownItem}
+          onClick={() =>
+            handleSelectOutboundProduct(product)
+          }
+        >
+          {product.name}
+        </div>
+
+      ))}
+
+    </div>
+
+  )}
+
+</div>
+<div style={{ position: 'relative' }}>
+
+  <input
+    placeholder="Location Code"
+    value={outboundForm.locationCode}
+    onChange={(e) =>
+      setOutboundForm({
+        ...outboundForm,
+        locationCode: e.target.value
+      })
+    }
+    style={input}
+  />
+
+  {outboundLocationSuggestions.length > 0 && (
+
+    <div style={dropdown}>
+
+      {outboundLocationSuggestions.map(location => (
+
+        <div
+          key={location.id}
+          style={dropdownItem}
+          onClick={() =>
+            handleSelectOutboundLocation(location)
+          }
+        >
+          {location.code}
+        </div>
+
+      ))}
+
+    </div>
+
+  )}
+
+</div>
+
+      <input
+        type="number"
+        placeholder="Quantity"
+        value={outboundForm.quantity}
+        onChange={(e)=>
+          setOutboundForm({
+            ...outboundForm,
+            quantity:e.target.value
+          })
+        }
+        style={input}
+      />
+
+      <div>
+
+        <button
+          style={btn}
+          onClick={handleOutbound}
+        >
+          Save
+        </button>
+
+        <button
+          style={closeBtn}
+          onClick={() =>
+            setShowOutbound(false)
+          }
+        >
+          Close
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+)}
       {/* TABLE */}
       <div style={card}>
         <h3>📦 Inventory</h3>
@@ -363,4 +1046,90 @@ const dropdown = { position: 'absolute', background: '#fff', border: '1px solid 
 const dropdownItem = { padding: 8, cursor: 'pointer' }
 const table = { width: '100%', borderCollapse: 'collapse' }
 const th = { padding: 10, borderBottom: '1px solid #ddd', textAlign: 'left' }
-const td = { padding: 10, borderBottom: '1px solid #eee' }
+const td = {
+  padding: 10,
+  borderBottom: '1px solid #eee'
+}
+const userCard = {
+  background: '#fff',
+  padding: 20,
+  borderRadius: 10,
+  border: '1px solid #e5e7eb',
+  marginBottom: 20,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center'
+}
+
+const logoutBtn = {
+  background: '#ef4444',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 8,
+  padding: '10px 15px',
+  cursor: 'pointer'
+}
+
+const menuGrid = {
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(auto-fit,minmax(150px,1fr))',
+  gap: 15
+}
+
+const menuBtn = {
+  background: '#fff',
+  border: '1px solid #d1d5db',
+  borderRadius: 8,
+  padding: 15,
+  cursor: 'pointer',
+  color: '#000',
+  fontWeight: 600
+}
+
+const statsGrid = {
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(auto-fit,minmax(200px,1fr))',
+  gap: 20,
+  marginBottom: 20
+}
+
+const statCard = {
+  background: '#fff',
+  border: '1px solid #e5e7eb',
+  borderRadius: 10,
+  padding: 20,
+  textAlign: 'center'
+}
+const modalOverlay = {
+  position: 'fixed',
+  inset: 0,
+  background:
+    'rgba(0,0,0,0.5)',
+
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+
+  zIndex: 999
+}
+
+const modal = {
+  background: '#fff',
+  padding: 25,
+  borderRadius: 12,
+  width: 400,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10
+}
+
+const closeBtn = {
+  padding: '8px 14px',
+  marginLeft: 10,
+  background: '#ef4444',
+  color: '#fff',
+  borderRadius: 6,
+  cursor: 'pointer'
+}

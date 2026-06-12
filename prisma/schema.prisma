@@ -58,4 +58,18 @@ model User {
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  auditLogs AuditLog[]
+}
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+
+  action    String
+  detail    String?
+
+  userId    Int
+
+  user      User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
 }

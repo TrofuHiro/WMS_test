@@ -1,6 +1,24 @@
 import { prisma } from '@/lib/prisma'
+import { getUserFromRequest } from '@/lib/auth'
 
 export async function POST(req) {
+  const user = getUserFromRequest(req)
+
+  if (!user) {
+    return Response.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+  if (
+    user.role !== 'ADMIN' &&
+    user.role !== 'STAFF'
+  ) {
+    return Response.json(
+      { error: 'Forbidden' },
+      { status: 403 }
+    )
+  }
   try {
     const body = await req.json()
     const { name, quantity, locationCode } = body
@@ -45,7 +63,7 @@ export async function POST(req) {
     }
 
     // 🔥 3. inventory + transaction (atomic)
-    const [inventory, transaction] = await prisma.$transaction([
+    const [inventory, transaction, auditLog] = await prisma.$transaction([
       prisma.inventory.upsert({
         where: {
           productId_locationId: {
@@ -70,16 +88,23 @@ export async function POST(req) {
           quantity: qty,
           productId: product.id
         }
-      })
+      }),
+      prisma.auditLog.create({
+  data: {
+    action: 'INBOUND',
+    userId: user.id
+  }
+})
     ])
 
     return Response.json({
-      message: 'Inbound success',
-      product,
-      location,
-      inventory,
-      transaction
-    })
+  message: 'Inbound success',
+  product,
+  location,
+  inventory,
+  transaction,
+  auditLog
+})
 
   } catch (error) {
     console.error(error)

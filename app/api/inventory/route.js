@@ -19,10 +19,12 @@ export async function GET(req) {
     }),
 
     ...(locationCode && {
-      location: {
-        code: locationCode
-      }
-    })
+  location: {
+    code: {
+      contains: locationCode
+    }
+  }
+})
   }
 
   const [data, total] = await Promise.all([
