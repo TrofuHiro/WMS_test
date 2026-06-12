@@ -628,9 +628,6 @@ const handleSelectOutboundLocation = (
 >
   📤 Outbound
 </button>
-          <button style={menuBtn}>
-            📦 Inventory
-          </button>
         </>
       )}
 
