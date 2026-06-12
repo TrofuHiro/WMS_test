@@ -63,7 +63,54 @@ const [outboundLocationSuggestions,
   inbound: 0,
   outbound: 0
 })
+const [showProducts, setShowProducts] =
+  useState(false)
 
+const [products, setProducts] =
+  useState([])
+  const fetchProducts = async () => {
+
+  try {
+
+    const res =
+      await fetch('/api/inventory?limit=1000')
+
+    const json =
+      await res.json()
+
+    const names = new Set()
+
+    const uniqueProducts = []
+
+    ;(json.data || []).forEach(item => {
+
+      if (
+        item.product &&
+        !names.has(item.product.name)
+      ) {
+
+        names.add(
+          item.product.name
+        )
+
+        uniqueProducts.push(
+          item.product
+        )
+      }
+
+    })
+
+    setProducts(
+      uniqueProducts
+    )
+
+  } catch (err) {
+
+    console.error(err)
+
+  }
+
+}
   // =========================
   // 📦 FETCH INVENTORY
   // =========================
@@ -595,9 +642,18 @@ const handleSelectOutboundLocation = (
 
       {user.role === 'ADMIN' && (
         <>
-          <button style={menuBtn}>
-            📦 Products
-          </button>
+          <button
+  style={menuBtn}
+  onClick={async () => {
+
+    await fetchProducts()
+
+    setShowProducts(true)
+
+  }}
+>
+  📦 Products
+</button>
 
           <button style={menuBtn}>
             🏭 Warehouses
@@ -1020,6 +1076,70 @@ const handleSelectOutboundLocation = (
 
   </div>
 )}
+{showProducts && (
+
+  <div style={modalOverlay}>
+
+    <div
+      style={{
+        ...modal,
+        width: 500,
+        maxHeight: '70vh'
+      }}
+    >
+
+      <h2>
+        📦 Product List
+      </h2>
+
+      <div
+        style={{
+          overflowY: 'auto',
+          maxHeight: 300
+        }}
+      >
+
+        {products.length === 0 ? (
+
+          <p>
+            No Products
+          </p>
+
+        ) : (
+
+          products.map(product => (
+
+            <div
+              key={product.id}
+              style={{
+                padding: 10,
+                borderBottom:
+                  '1px solid #eee'
+              }}
+            >
+              {product.name}
+            </div>
+
+          ))
+
+        )}
+
+      </div>
+
+      <button
+        style={closeBtn}
+        onClick={() =>
+          setShowProducts(false)
+        }
+      >
+        Close
+      </button>
+
+    </div>
+
+  </div>
+
+)}
       {/* TABLE */}
       <div style={card}>
         <h3>📦 Inventory</h3>
@@ -1081,90 +1201,13 @@ const dropdown = { position: 'absolute', background: '#fff', border: '1px solid 
 const dropdownItem = { padding: 8, cursor: 'pointer' }
 const table = { width: '100%', borderCollapse: 'collapse' }
 const th = { padding: 10, borderBottom: '1px solid #ddd', textAlign: 'left' }
-const td = {
-  padding: 10,
-  borderBottom: '1px solid #eee'
-}
-const userCard = {
-  background: '#fff',
-  padding: 20,
-  borderRadius: 10,
-  border: '1px solid #e5e7eb',
-  marginBottom: 20,
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
-}
-
-const logoutBtn = {
-  background: '#ef4444',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 8,
-  padding: '10px 15px',
-  cursor: 'pointer'
-}
-
-const menuGrid = {
-  display: 'grid',
-  gridTemplateColumns:
-    'repeat(auto-fit,minmax(150px,1fr))',
-  gap: 15
-}
-
-const menuBtn = {
-  background: '#fff',
-  border: '1px solid #d1d5db',
-  borderRadius: 8,
-  padding: 15,
-  cursor: 'pointer',
-  color: '#000',
-  fontWeight: 600
-}
-
-const statsGrid = {
-  display: 'grid',
-  gridTemplateColumns:
-    'repeat(auto-fit,minmax(200px,1fr))',
-  gap: 20,
-  marginBottom: 20
-}
-
-const statCard = {
-  background: '#fff',
-  border: '1px solid #e5e7eb',
-  borderRadius: 10,
-  padding: 20,
-  textAlign: 'center'
-}
-const modalOverlay = {
-  position: 'fixed',
-  inset: 0,
-  background:
-    'rgba(0,0,0,0.5)',
-
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-
-  zIndex: 999
-}
-
-const modal = {
-  background: '#fff',
-  padding: 25,
-  borderRadius: 12,
-  width: 400,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10
-}
-
-const closeBtn = {
-  padding: '8px 14px',
-  marginLeft: 10,
-  background: '#ef4444',
-  color: '#fff',
-  borderRadius: 6,
-  cursor: 'pointer'
-}
+const td = {padding: 10,borderBottom: '1px solid #eee'}
+const userCard = {background: '#fff',padding: 20,borderRadius: 10,border: '1px solid #e5e7eb',marginBottom: 20,display: 'flex',justifyContent: 'space-between',alignItems: 'center'}
+const logoutBtn = {background: '#ef4444',color: '#fff',border: 'none',borderRadius: 8,padding: '10px 15px',cursor: 'pointer'}
+const menuGrid = {display: 'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap: 15}
+const menuBtn = {background: '#fff',border: '1px solid #d1d5db',borderRadius: 8,padding: 15,cursor: 'pointer',color: '#000',fontWeight: 600}
+const statsGrid = {display: 'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap: 20,marginBottom: 20}
+const statCard = {background: '#fff',border: '1px solid #e5e7eb',borderRadius: 10,padding: 20,textAlign: 'center'}
+const modalOverlay = {position: 'fixed',inset: 0,background:'rgba(0,0,0,0.5)',display: 'flex',justifyContent: 'center',alignItems: 'center',zIndex: 999}
+const modal = {background: '#fff',padding: 25,borderRadius: 12,width: 400,display: 'flex',flexDirection: 'column',gap: 10}
+const closeBtn = {padding: '8px 14px',marginLeft: 10,background: '#ef4444',color: '#fff',borderRadius: 6,cursor: 'pointer'}
