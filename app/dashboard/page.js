@@ -111,6 +111,42 @@ const [products, setProducts] =
   }
 
 }
+const [showUsers, setShowUsers] =
+  useState(false)
+
+const [users, setUsers] =
+  useState([])
+  const fetchUsers = async () => {
+
+  try {
+
+    const token =
+      localStorage.getItem('token')
+
+    const res = await fetch(
+      '/api/users',
+      {
+        headers: {
+          Authorization:
+            `Bearer ${token}`
+        }
+      }
+    )
+
+    const json =
+      await res.json()
+
+    setUsers(
+      json.data || []
+    )
+
+  } catch (err) {
+
+    console.error(err)
+
+  }
+
+}
   // =========================
   // 📦 FETCH INVENTORY
   // =========================
@@ -659,9 +695,18 @@ const handleSelectOutboundLocation = (
             🏭 Warehouses
           </button>
 
-          <button style={menuBtn}>
-            👥 Users
-          </button>
+          <button
+  style={menuBtn}
+  onClick={async () => {
+
+    await fetchUsers()
+
+    setShowUsers(true)
+
+  }}
+>
+  👥 Users
+</button>
 
           <button style={menuBtn}>
             📊 Reports
@@ -1130,6 +1175,99 @@ const handleSelectOutboundLocation = (
         style={closeBtn}
         onClick={() =>
           setShowProducts(false)
+        }
+      >
+        Close
+      </button>
+
+    </div>
+
+  </div>
+
+)}
+{showUsers && (
+
+  <div style={modalOverlay}>
+
+    <div
+      style={{
+        ...modal,
+        width: 700,
+        maxHeight: '70vh'
+      }}
+    >
+
+      <h2>
+        👥 User List
+      </h2>
+
+      <div
+        style={{
+          overflowY: 'auto',
+          maxHeight: 400
+        }}
+      >
+
+        <table
+          style={{
+            width: '100%',
+            borderCollapse:
+              'collapse'
+          }}
+        >
+
+          <thead>
+
+            <tr>
+
+              <th style={th}>
+                Name
+              </th>
+
+              <th style={th}>
+                Email
+              </th>
+
+              <th style={th}>
+                Role
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {users.map(user => (
+
+              <tr key={user.id}>
+
+                <td style={td}>
+                  {user.name}
+                </td>
+
+                <td style={td}>
+                  {user.email}
+                </td>
+
+                <td style={td}>
+                  {user.role}
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      <button
+        style={closeBtn}
+        onClick={() =>
+          setShowUsers(false)
         }
       >
         Close
