@@ -86,7 +86,8 @@ export async function POST(req) {
         data: {
           type: 'IN',
           quantity: qty,
-          productId: product.id
+          productId: product.id,
+          locationId: location.id
         }
       }),
       prisma.auditLog.create({

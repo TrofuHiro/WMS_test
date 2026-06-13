@@ -173,6 +173,7 @@ useEffect(() => {
               <tr>
                 <th style={th}>Product</th>
                 <th style={th}>Type</th>
+                <th style={th}>Location</th>
                 <th style={th}>Qty</th>
                 <th style={th}>Date</th>
               </tr>
@@ -190,7 +191,7 @@ useEffect(() => {
                   }}>
                     {item.type}
                   </td>
-
+                  <td style={td}>{item.location?.code || '-'}</td>
                   <td style={td}>{item.quantity}</td>
 
                   <td style={td}>

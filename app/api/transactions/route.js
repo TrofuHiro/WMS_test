@@ -38,7 +38,8 @@ export async function GET(req) {
       prisma.transaction.findMany({
         where,
         include: {
-          product: true
+          product: true,
+          location: true
         },
         orderBy: {
           createdAt: 'desc'

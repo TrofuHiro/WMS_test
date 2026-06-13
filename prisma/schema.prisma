@@ -8,38 +8,41 @@ datasource db {
 }
 
 model Product {
-  id          Int          @id @default(autoincrement())
-  name        String
-  inventories Inventory[]
+  id           Int           @id @default(autoincrement())
+  name         String
+  inventories  Inventory[]
   transactions Transaction[]
 }
 
 model WarehouseLocation {
-  id          Int          @id @default(autoincrement())
-  code        String       @unique
-  inventories Inventory[]
+  id           Int           @id @default(autoincrement())
+  code         String        @unique
+  inventories  Inventory[]
+  transactions Transaction[]
 }
 
 model Inventory {
-  id          Int       @id @default(autoincrement())
-  productId   Int
-  locationId  Int
-  quantity    Int
+  id         Int @id @default(autoincrement())
+  productId  Int
+  locationId Int
+  quantity   Int
 
-  product     Product   @relation(fields: [productId], references: [id])
-  location    WarehouseLocation @relation(fields: [locationId], references: [id])
+  product  Product           @relation(fields: [productId], references: [id])
+  location WarehouseLocation @relation(fields: [locationId], references: [id])
 
   @@unique([productId, locationId])
 }
 
 model Transaction {
-  id        Int      @id @default(autoincrement())
-  type      String   // IN / OUT
-  quantity  Int
-  productId Int
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  type       String // IN / OUT
+  quantity   Int
+  productId  Int
+  locationId Int?
+  createdAt  DateTime @default(now())
 
-  product   Product  @relation(fields: [productId], references: [id])
+  product  Product            @relation(fields: [productId], references: [id])
+  location WarehouseLocation? @relation(fields: [locationId], references: [id])
 }
 
 enum UserRole {
@@ -49,27 +52,28 @@ enum UserRole {
 }
 
 model User {
-  id          Int       @id @default(autoincrement())
-  name        String
-  email       String    @unique
-  password    String
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
 
-  role        UserRole  @default(STAFF)
+  role UserRole @default(STAFF)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   auditLogs AuditLog[]
 }
+
 model AuditLog {
-  id        Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  action    String
-  detail    String?
+  action String
+  detail String?
 
-  userId    Int
+  userId Int
 
-  user      User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
 }

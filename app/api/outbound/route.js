@@ -149,7 +149,8 @@ export async function POST(req) {
         data: {
           type: 'OUT',
           quantity: qty,
-          productId: product.id
+          productId: product.id,
+          locationId: location.id
         }
       }),
 
