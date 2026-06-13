@@ -8,6 +8,8 @@ export async function GET(req) {
     const name = searchParams.get('name')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
+    const locationCode =
+  searchParams.get('locationCode')
 
     // ✅ pagination
     const page = Number(searchParams.get('page') || 1)
@@ -24,7 +26,13 @@ export async function GET(req) {
           }
         }
       }),
-
+      ...(locationCode && {
+    location: {
+      code: {
+        contains: locationCode
+      }
+    }
+  }),
       ...(startDate && endDate && {
         createdAt: {
           gte: new Date(startDate),

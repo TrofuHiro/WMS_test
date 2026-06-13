@@ -163,8 +163,13 @@ const [users, setUsers] =
     try {
       const params = new URLSearchParams()
 
-      if (search) params.append('name', search)
-      if (location) params.append('locationCode', location)
+      if (search) {
+  params.append('name', search)
+}
+
+if (location) {
+  params.append('locationCode', location)
+}
 
       params.append('page', page)
       params.append('limit', 10)
@@ -823,6 +828,22 @@ const handleSelectOutboundLocation = (
             placeholder="Product"
             style={input}
           />
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Location"
+              style={input}
+        />
+
+        <button
+          style={btn}
+          onClick={() => {
+            setPage(1)
+            fetchData()
+          }}
+        >
+          Search
+        </button>
 
           {suggestions.length > 0 && (
             <div style={dropdown}>
@@ -838,23 +859,6 @@ const handleSelectOutboundLocation = (
             </div>
           )}
         </div>
-
-        <input
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Location"
-          style={input}
-        />
-
-        <button
-          style={btn}
-          onClick={() => {
-            setPage(1)
-            fetchData()
-          }}
-        >
-          Search
-        </button>
       </div>
 
       {/* CHART - ADMIN ONLY */}

@@ -8,6 +8,7 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(false)
 
   const [search, setSearch] = useState('')
+  const [location, setLocation] = useState('')
   const [type, setType] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -26,10 +27,25 @@ export default function TransactionsPage() {
   try {
     const params = new URLSearchParams()
 
-    if (search) params.append('name', search)
-    if (type) params.append('type', type)
-    if (startDate) params.append('startDate', startDate)
-    if (endDate) params.append('endDate', endDate)
+    if (search) {
+  params.append('name', search)
+}
+
+if (location) {
+  params.append('locationCode', location)
+}
+
+if (type) {
+  params.append('type', type)
+}
+
+if (startDate) {
+  params.append('startDate', startDate)
+}
+
+if (endDate) {
+  params.append('endDate', endDate)
+}
 
     // ✅ pagination
     params.append('page', page)
@@ -102,6 +118,30 @@ useEffect(() => {
             placeholder="Search product..."
             style={input}
           />
+          <input
+  value={location}
+  onChange={(e) =>
+    setLocation(e.target.value)
+  }
+  placeholder="Search location..."
+  style={input}
+/>
+<select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          style={input}
+        >
+          <option value="">All</option>
+          <option value="IN">IN</option>
+          <option value="OUT">OUT</option>
+        </select>
+
+        <button style={btn} onClick={() => {
+  setPage(1)
+  fetchData()
+}}>
+  Search
+</button>
 
           {suggestions.length > 0 && (
             <div style={dropdown}>
@@ -118,22 +158,7 @@ useEffect(() => {
           )}
         </div>
 
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          style={input}
-        >
-          <option value="">All</option>
-          <option value="IN">IN</option>
-          <option value="OUT">OUT</option>
-        </select>
-
-        <button style={btn} onClick={() => {
-  setPage(1)
-  fetchData()
-}}>
-  Search
-</button>
+        
       </div>
 
       {/* 📅 DATE */}
