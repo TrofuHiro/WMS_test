@@ -38,6 +38,15 @@ export default function Dashboard() {
 const [showOutbound, setShowOutbound] =
   useState(false)
 
+const [showWarehouses, setShowWarehouses] =
+  useState(false)
+
+const [warehouses, setWarehouses] =
+  useState([])
+
+const [warehouseDetail, setWarehouseDetail] =
+  useState(null)
+
 
 const [inboundForm, setInboundForm] =
   useState({
@@ -153,6 +162,46 @@ const [users, setUsers] =
 
   }
 
+}
+const fetchWarehouses = async () => {
+
+  try {
+
+    const res =
+      await fetch('/api/warehouses')
+
+    const json =
+      await res.json()
+
+    setWarehouses(
+      json.data || []
+    )
+
+  } catch (err) {
+
+    console.error(err)
+
+  }
+
+}
+const fetchWarehouseDetail = async (id) => {
+  try {
+
+    const res =
+      await fetch(`/api/warehouses/${id}`)
+
+    const json =
+      await res.json()
+
+    console.log(json)
+
+    setWarehouseDetail(json.data)
+
+  } catch (err) {
+
+    console.error(err)
+
+  }
 }
   // =========================
   // 📦 FETCH INVENTORY
@@ -741,9 +790,18 @@ const handleSelectOutboundLocation = (
   📦 Products
 </button>
 
-          <button style={menuBtn}>
-            🏭 Warehouses
-          </button>
+          <button
+  style={menuBtn}
+  onClick={async () => {
+
+    await fetchWarehouses()
+
+    setShowWarehouses(true)
+
+  }}
+>
+  🏭 Warehouses
+</button>
 
           <button
   style={menuBtn}
@@ -757,10 +815,6 @@ const handleSelectOutboundLocation = (
 >
   👥 Users
 </button>
-
-          <button style={menuBtn}>
-            📊 Reports
-          </button>
         </>
       )}
 
@@ -1406,6 +1460,699 @@ const handleSelectOutboundLocation = (
     </div>
   </div>
 )}
+{showWarehouses && (
+
+  <div style={modalOverlay}>
+
+    <div
+      style={{
+        background: '#fff',
+        width: '1000px',
+        maxWidth: '95%',
+        maxHeight: '85vh',
+        overflow: 'hidden',
+        borderRadius: 16,
+        boxShadow:
+          '0 20px 40px rgba(0,0,0,0.15)'
+      }}
+    >
+
+      {/* Header */}
+
+      <div
+        style={{
+          padding: 20,
+          borderBottom:
+            '1px solid #e5e7eb',
+          display: 'flex',
+          justifyContent:
+            'space-between',
+          alignItems: 'center'
+        }}
+      >
+
+        <div>
+
+          <h2
+            style={{
+              margin: 0
+            }}
+          >
+            🏭 Warehouses
+          </h2>
+
+          <small
+            style={{
+              color: '#6b7280'
+            }}
+          >
+            Warehouse Management Overview
+          </small>
+
+        </div>
+
+        <button
+          style={closeBtn}
+          onClick={() =>
+            setShowWarehouses(false)
+          }
+        >
+          ✕
+        </button>
+
+      </div>
+
+      {/* Body */}
+
+      <div
+        style={{
+          padding: 20,
+          overflowY: 'auto',
+          maxHeight: '70vh'
+        }}
+      >
+
+        {/* Summary */}
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              'repeat(auto-fit,minmax(220px,1fr))',
+            gap: 15,
+            marginBottom: 25
+          }}
+        >
+
+          <div
+            style={{
+              background: '#eff6ff',
+              padding: 20,
+              borderRadius: 12,
+              border:
+                '1px solid #bfdbfe'
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                color: '#2563eb'
+              }}
+            >
+              {warehouses.length}
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0'
+              }}
+            >
+              Warehouses
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: '#f0fdf4',
+              padding: 20,
+              borderRadius: 12,
+              border:
+                '1px solid #bbf7d0'
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                color: '#16a34a'
+              }}
+            >
+              {warehouses.reduce(
+                (sum, w) =>
+                  sum + w.totalProducts,
+                0
+              )}
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0'
+              }}
+            >
+              Total Products
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: '#fefce8',
+              padding: 20,
+              borderRadius: 12,
+              border:
+                '1px solid #fde68a'
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                color: '#ca8a04'
+              }}
+            >
+              {warehouses.reduce(
+                (sum, w) =>
+                  sum + w.totalQuantity,
+                0
+              )}
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0'
+              }}
+            >
+              Total Stock
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: '#faf5ff',
+              padding: 20,
+              borderRadius: 12,
+              border:
+                '1px solid #d8b4fe'
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                color: '#9333ea'
+              }}
+            >
+              {warehouses.length > 0
+                ? Math.max(
+                    ...warehouses.map(
+                      w =>
+                        w.totalQuantity
+                    )
+                  )
+                : 0}
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0'
+              }}
+            >
+              Largest Stock
+            </p>
+          </div>
+
+        </div>
+
+        {/* Table */}
+
+        {warehouses.length === 0 ? (
+
+          <div
+            style={{
+              textAlign: 'center',
+              padding: 40,
+              color: '#6b7280'
+            }}
+          >
+            No Warehouses Found
+          </div>
+
+        ) : (
+
+          <table
+            style={{
+              width: '100%',
+              borderCollapse:
+                'collapse'
+            }}
+          >
+
+            <thead>
+
+              <tr
+                style={{
+                  background:
+                    '#f8fafc'
+                }}
+              >
+
+                <th style={th}>
+                  Warehouse
+                </th>
+
+                <th style={th}>
+                  Products
+                </th>
+
+                <th style={th}>
+                  Total Qty
+                </th>
+
+                <th style={th}>
+                  Status
+                </th>
+
+                <th style={th}>
+                  Action
+                </th>
+
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {warehouses.map(w => (
+
+                <tr
+                  key={w.id}
+                  style={{
+                    borderBottom:
+                      '1px solid #eee'
+                  }}
+                >
+
+                  <td style={td}>
+                    <b>{w.code}</b>
+                  </td>
+
+                  <td style={td}>
+
+                    <span
+                      style={{
+                        background:
+                          '#dbeafe',
+                        color:
+                          '#1d4ed8',
+                        padding:
+                          '4px 10px',
+                        borderRadius:
+                          999
+                      }}
+                    >
+                      {w.totalProducts}
+                    </span>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <span
+                      style={{
+                        background:
+                          '#dcfce7',
+                        color:
+                          '#166534',
+                        padding:
+                          '4px 10px',
+                        borderRadius:
+                          999
+                      }}
+                    >
+                      {w.totalQuantity}
+                    </span>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <span
+                      style={{
+                        background:
+                          w.totalQuantity < 10
+                            ? '#fee2e2'
+                            : '#dcfce7',
+
+                        color:
+                          w.totalQuantity < 10
+                            ? '#dc2626'
+                            : '#166534',
+
+                        padding:
+                          '4px 10px',
+
+                        borderRadius:
+                          999,
+
+                        fontWeight:
+                          600
+                      }}
+                    >
+                      {w.totalQuantity < 10
+                        ? 'LOW'
+                        : 'NORMAL'}
+                    </span>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <button
+                      style={{
+                        ...btn,
+                        marginLeft: 0
+                      }}
+                      onClick={() =>
+                        fetchWarehouseDetail(
+                          w.id
+                        )
+                      }
+                    >
+                      View Details
+                    </button>
+
+                  </td>
+
+                </tr>
+
+              ))}
+
+            </tbody>
+
+          </table>
+
+        )}
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
+{warehouseDetail && (
+
+  <div style={modalOverlay}>
+
+    <div
+      style={{
+        background: '#fff',
+        width: '1000px',
+        maxWidth: '95%',
+        maxHeight: '85vh',
+        overflow: 'hidden',
+        borderRadius: 16,
+        boxShadow:
+          '0 20px 40px rgba(0,0,0,0.15)'
+      }}
+    >
+
+      {/* Header */}
+
+      <div
+        style={{
+          padding: 20,
+          borderBottom:
+            '1px solid #e5e7eb',
+          display: 'flex',
+          justifyContent:
+            'space-between',
+          alignItems: 'center'
+        }}
+      >
+
+        <div>
+
+          <h2
+            style={{
+              margin: 0
+            }}
+          >
+            📦 Warehouse :
+            {warehouseDetail.code}
+          </h2>
+
+          <small
+            style={{
+              color: '#6b7280'
+            }}
+          >
+            Warehouse Inventory Details
+          </small>
+
+        </div>
+
+        <button
+          style={closeBtn}
+          onClick={() =>
+            setWarehouseDetail(null)
+          }
+        >
+          ✕
+        </button>
+
+      </div>
+
+      {/* Body */}
+
+      <div
+        style={{
+          padding: 20,
+          overflowY: 'auto',
+          maxHeight: '70vh'
+        }}
+      >
+
+        {/* Summary */}
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              'repeat(auto-fit,minmax(220px,1fr))',
+            gap: 15,
+            marginBottom: 25
+          }}
+        >
+
+          <div
+            style={{
+              background: '#eff6ff',
+              padding: 20,
+              borderRadius: 12,
+              border:
+                '1px solid #bfdbfe'
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                color: '#2563eb'
+              }}
+            >
+              {
+                warehouseDetail.inventories?.length || 0
+              }
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0'
+              }}
+            >
+              Products
+            </p>
+
+          </div>
+
+          <div
+            style={{
+              background: '#f0fdf4',
+              padding: 20,
+              borderRadius: 12,
+              border:
+                '1px solid #bbf7d0'
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                color: '#16a34a'
+              }}
+            >
+              {
+                warehouseDetail.inventories?.reduce(
+                  (sum, item) =>
+                    sum + item.quantity,
+                  0
+                ) || 0
+              }
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0'
+              }}
+            >
+              Total Quantity
+            </p>
+
+          </div>
+
+          <div
+            style={{
+              background: '#faf5ff',
+              padding: 20,
+              borderRadius: 12,
+              border:
+                '1px solid #d8b4fe'
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                color: '#9333ea'
+              }}
+            >
+              {
+                warehouseDetail.inventories?.length
+                  ? Math.max(
+                      ...warehouseDetail.inventories.map(
+                        item => item.quantity
+                      )
+                    )
+                  : 0
+              }
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0'
+              }}
+            >
+              Highest Stock
+            </p>
+
+          </div>
+
+        </div>
+
+        {/* Table */}
+
+        <table
+          style={{
+            width: '100%',
+            borderCollapse:
+              'collapse'
+          }}
+        >
+
+          <thead>
+
+            <tr
+              style={{
+                background:
+                  '#f8fafc'
+              }}
+            >
+
+              <th style={th}>
+                Product
+              </th>
+
+              <th style={th}>
+                Quantity
+              </th>
+
+              <th style={th}>
+                Status
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {warehouseDetail.inventories?.map(
+              item => (
+
+                <tr
+                  key={item.id}
+                  style={{
+                    borderBottom:
+                      '1px solid #eee'
+                  }}
+                >
+
+                  <td style={td}>
+                    <b>
+                      {item.product.name}
+                    </b>
+                  </td>
+
+                  <td style={td}>
+
+                    <span
+                      style={{
+                        background:
+                          '#dbeafe',
+                        color:
+                          '#1d4ed8',
+                        padding:
+                          '4px 10px',
+                        borderRadius:
+                          999
+                      }}
+                    >
+                      {item.quantity}
+                    </span>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <span
+                      style={{
+                        background:
+                          item.quantity < 5
+                            ? '#fee2e2'
+                            : '#dcfce7',
+
+                        color:
+                          item.quantity < 5
+                            ? '#dc2626'
+                            : '#166534',
+
+                        padding:
+                          '4px 10px',
+
+                        borderRadius:
+                          999,
+
+                        fontWeight:
+                          600
+                      }}
+                    >
+                      {item.quantity < 5
+                        ? 'LOW STOCK'
+                        : 'NORMAL'}
+                    </span>
+
+                  </td>
+
+                </tr>
+
+              )
+            )}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
       {/* TABLE */}
       <div style={card}>
         <h3>📦 Inventory</h3>
@@ -1477,3 +2224,5 @@ const statCard = {background: '#fff',border: '1px solid #e5e7eb',borderRadius: 1
 const modalOverlay = {position: 'fixed',inset: 0,background:'rgba(0,0,0,0.5)',display: 'flex',justifyContent: 'center',alignItems: 'center',zIndex: 999}
 const modal = {background: '#fff',padding: 25,borderRadius: 12,width: 400,display: 'flex',flexDirection: 'column',gap: 10}
 const closeBtn = {padding: '8px 14px',marginLeft: 10,background: '#ef4444',color: '#fff',borderRadius: 6,cursor: 'pointer'}
+const warehouseBadge = {background: '#dbeafe',color: '#1d4ed8',padding: '4px 10px',borderRadius: 999,fontSize: 12,fontWeight: 600}
+const qtyBadge = {background: '#dcfce7',color: '#166534',padding: '4px 10px',borderRadius: 999,fontSize: 12,fontWeight: 600}
