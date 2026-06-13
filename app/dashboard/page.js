@@ -112,6 +112,12 @@ const [products, setProducts] =
   }
 
 }
+const [showAddUser, setShowAddUser] = useState(false)
+
+const [name, setName] = useState('')
+const [email, setEmail] = useState('')
+const [password, setPassword] = useState('')
+const [role, setRole] = useState('STAFF')
 const [showUsers, setShowUsers] =
   useState(false)
 
@@ -229,6 +235,44 @@ const [users, setUsers] =
       inbound,
       outbound
     })
+
+  } catch (err) {
+    console.error(err)
+  }
+}
+const createUser = async () => {
+  try {
+
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        role
+      })
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      alert(data.error)
+      return
+    }
+
+    alert('User created')
+
+    setShowAddUser(false)
+
+    setName('')
+    setEmail('')
+    setPassword('')
+    setRole('STAFF')
+
+    fetchUsers()
 
   } catch (err) {
     console.error(err)
@@ -1202,10 +1246,30 @@ const handleSelectOutboundLocation = (
       }}
     >
 
-      <h2>
-        👥 User List
-      </h2>
+      <div
+  style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15
+  }}
+>
+  <h2 style={{ margin: 0 }}>
+    👥 User List
+  </h2>
 
+  <button
+    style={{
+      ...btn,
+      padding: '6px 12px',
+      fontSize: 14,
+      width: 'auto'
+    }}
+    onClick={() => setShowAddUser(true)}
+  >
+     Add User
+  </button>
+</div>
       <div
         style={{
           overflowY: 'auto',
@@ -1282,6 +1346,61 @@ const handleSelectOutboundLocation = (
 
   </div>
 
+)}
+{showAddUser && (
+  <div style={modalOverlay}>
+    <div style={modal}>
+
+      <h2>Add User</h2>
+
+      <input
+        style={input}
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+
+      <input
+        style={input}
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
+      <input
+        style={input}
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      <select
+        style={input}
+        value={role}
+        onChange={(e) => setRole(e.target.value)}
+      >
+        <option value="ADMIN">ADMIN</option>
+        <option value="STAFF">STAFF</option>
+        <option value="VIEWER">VIEWER</option>
+      </select>
+
+      <button
+        style={btn}
+        onClick={createUser}
+      >
+        Save
+      </button>
+
+      <button
+        style={closeBtn}
+        onClick={() => setShowAddUser(false)}
+      >
+        Close
+      </button>
+
+    </div>
+  </div>
 )}
       {/* TABLE */}
       <div style={card}>
