@@ -41,15 +41,25 @@ export async function POST(req) {
     const qty = Number(body.quantity)
 
     if (
-      !productName ||
-      !locationCode ||
-      qty <= 0
-    ) {
-      return Response.json(
-        { error: 'Missing data' },
-        { status: 400 }
-      )
-    }
+  !productName ||
+  !locationCode ||
+  isNaN(qty)
+) {
+  return Response.json(
+    { error: 'Invalid data' },
+    { status: 400 }
+  )
+}
+
+if (qty <= 0) {
+  return Response.json(
+    {
+      error:
+        'Quantity must be greater than 0'
+    },
+    { status: 400 }
+  )
+}
 
     // =========================
     // FIND PRODUCT

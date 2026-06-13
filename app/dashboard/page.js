@@ -300,7 +300,7 @@ const createUser = async () => {
     const res = await fetch('/api/users', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
         name,
@@ -1029,17 +1029,26 @@ const handleSelectOutboundLocation = (
 </div>
 
       <input
-        type="number"
-        placeholder="Quantity"
-        value={inboundForm.quantity}
-        onChange={(e)=>
-          setInboundForm({
-            ...inboundForm,
-            quantity:e.target.value
-          })
-        }
-        style={input}
-      />
+  type="number"
+  min="1"
+  placeholder="Quantity"
+  value={inboundForm.quantity}
+  onChange={(e) => {
+
+    const value = e.target.value
+
+    if (value === '' || Number(value) >= 1) {
+
+      setInboundForm({
+        ...inboundForm,
+        quantity: value
+      })
+
+    }
+
+  }}
+  style={input}
+/>
   <div style={{ position: 'relative' }}>
 
   <input
@@ -1192,17 +1201,26 @@ const handleSelectOutboundLocation = (
 </div>
 
       <input
-        type="number"
-        placeholder="Quantity"
-        value={outboundForm.quantity}
-        onChange={(e)=>
-          setOutboundForm({
-            ...outboundForm,
-            quantity:e.target.value
-          })
-        }
-        style={input}
-      />
+  type="number"
+  min="1"
+  placeholder="Quantity"
+  value={outboundForm.quantity}
+  onChange={(e) => {
+
+    const value = e.target.value
+
+    if (value === '' || Number(value) >= 1) {
+
+      setOutboundForm({
+        ...outboundForm,
+        quantity: value
+      })
+
+    }
+
+  }}
+  style={input}
+/>
 
       <div>
 

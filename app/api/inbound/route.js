@@ -25,20 +25,23 @@ export async function POST(req) {
 
     const qty = Number(quantity)
 
-    // validate
-    if (!name || !qty || !locationCode) {
-      return Response.json(
-        { error: 'Missing or invalid fields' },
-        { status: 400 }
-      )
-    }
+if (
+  !name ||
+  !locationCode ||
+  isNaN(qty)
+) {
+  return Response.json(
+    { error: 'Invalid input' },
+    { status: 400 }
+  )
+}
 
-    if (qty <= 0) {
-      return Response.json(
-        { error: 'Quantity must be greater than 0' },
-        { status: 400 }
-      )
-    }
+if (qty <= 0) {
+  return Response.json(
+    { error: 'Quantity must be greater than 0' },
+    { status: 400 }
+  )
+}
 
     // 1. หา product หรือสร้างใหม่
     let product = await prisma.product.findFirst({
