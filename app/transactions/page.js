@@ -47,6 +47,19 @@ export default function TransactionsPage() {
 
   setLoading(false)
 }
+// =========================
+// 🔐 AUTH CHECK
+// =========================
+useEffect(() => {
+  const token = localStorage.getItem('token')
+
+  if (!token) {
+    window.location.href = '/login'
+    return
+  }
+
+  fetchData()
+}, [page])
 
   // =========================
   // 🔍 AUTOCOMPLETE
@@ -71,10 +84,6 @@ export default function TransactionsPage() {
     setSuggestions([])
     setTimeout(fetchData, 100)
   }
-
-  useEffect(() => {
-  fetchData()
-}, [page])
 
   return (
     <div style={container}>
